@@ -108,37 +108,35 @@ class WebSocketRPCClient:
         finally:
             self.running = False
 
-    # TODO: handle rpc endpoints
-
-    async def init_channel(self, payload: dict, handler: Callable) -> int:
-        assert "type" in payload
-        assert "endpoint" in payload
-        assert "channelId" not in payload
-        assert "creationParameter" in payload
-        assert payload["type"] == "channelCreate"
-
+    # TODO: endpoint enum
+    async def init_channel(self, endpoint: str, creation_parameter: dict, handler: Callable) -> int:
         channel_id = self.get_next_channel_id()
+        payload = {
+            "type": "channelCreate",
+            "endpoint": endpoint,
+            "channelId": channel_id,
+            "creationParameter": creation_parameter
+        }
         self.channel_handlers[channel_id] = handler
-        payload["channelId"] = channel_id
         await self.websocket.send(json.dumps(payload))
         return channel_id
     
-    async def rpc_call(self, payload: dict) -> int:
-        assert "type" in payload
-        assert "endpoint" in payload
-        assert "callId" not in payload
-        assert "parameter" in payload
-        assert payload["type"] == "rpcCall"
-
+    async def rpc_call(self, endpoint: str, parameter: dict) -> int:
         call_id = self.get_next_rpc_call_id()
-        payload["callId"] = call_id
+        payload = {
+            "type": "rpcCall",
+            "endpoint": endpoint,
+            "callId": call_id,
+            "parameter": parameter
+        }
         await self.websocket.send(json.dumps(payload))
         return call_id
 
-class LLMClient:
+class LMStudioClient:
     
     master_channel_id = 0
 
+    # TODO other init options
     def __init__(self, websocket_uri: str):
         self.client = WebSocketRPCClient(websocket_uri)
 
@@ -147,6 +145,9 @@ class LLMClient:
 
     async def close(self):
         await self.client.close()
+
+    # TODO implement all endpoints
+    # TODO cf. ts sdk for signatures
 
     async def load_model(self, model_path: str):
         loading_complete = asyncio.Event()
@@ -159,34 +160,23 @@ class LLMClient:
                 result.update(message)
                 loading_complete.set()
 
-        # example channel payload
+        # TODO: typing ugh
         payload = {
-            "type": "channelCreate",
-            "endpoint": "loadModel",
-            "creationParameter": {
                 "path": model_path,
                 "loadConfigStack": {"layers": []},
                 "noHup": False
             }
-        }
 
-        await self.client.init_channel(payload, handle_model_loading)
+        await self.client.init_channel("loadModel", payload, handle_model_loading)
 
         await loading_complete.wait()
         return result
     
     async def unload_model(self, model_path: str):
-        payload = {
-            "type": "rpcCall",
-            "endpoint": "unloadModel",
-            "parameter": {
-                "identifier": model_path
-            }
-        }
-        await self.client.rpc_call(payload)
+        await self.client.rpc_call("unloadModel", {"identifier": model_path})
 
 async def main():
-    llm_client = LLMClient("ws://localhost:1234/llm")
+    llm_client = LMStudioClient("ws://localhost:1234/llm")
     try:
         await llm_client.connect()
         
