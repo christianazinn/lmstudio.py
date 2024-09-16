@@ -19,9 +19,10 @@ Since the TypeScript SDK is in pre-release alpha, I guess this is in pre-pre-rel
 Expect the library to be completely nonfunctional for the time being, and expect absurdly breaking changes!
 
 Follow announcements about the base `lmstudio.js` library on [Twitter](https://lmstudio.ai/LMStudioAI) and [Discord](https://discord.gg/aPQfnNkxGC). Read the [TypeScript docs](https://lmstudio.ai/docs).
-Contact me at `@christianazinn` on Discord or via GitHub about this particular repository.
 
-<p>Discuss all things related to developing with LM Studio in <a href="https://discord.gg/aPQfnNkxGC">#dev-chat</a> in LM Studio's Community Discord server.</p>
+<p>Discuss all things related to developing with LM Studio in <a href="https://discord.gg/aPQfnNkxGC">#dev-chat</a> in LM Studio's Community Discord server. Contact me at `@christianazinn` on Discord or via GitHub about this particular repository.</p>
 <a href="https://discord.gg/aPQfnNkxGC"><img alt="Discord" src="https://img.shields.io/discord/1110598183144399058?logo=discord&style=flat&logoColor=white"></a>
   
 ---
+
+TODO: whatever goes here
