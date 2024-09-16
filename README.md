@@ -3,7 +3,7 @@
   <picture> 
     <source media="(prefers-color-scheme: dark)" srcset="https://github.com/christianazinn/lmstudio-python/blob/assets/dark.png?raw=true">
     <source media="(prefers-color-scheme: light)" srcset="https://github.com/christianazinn/lmstudio-python/blob/assets/light.png?raw=true">
-    <img alt="lmstudio python library logo" src="https://github.com/christianazinn/lmstudio-python/blob/assets/light.png?raw=true" width="290" height="86" style="max-width: 100%;">
+    <img alt="lmstudio python library logo" src="https://github.com/christianazinn/lmstudio-python/blob/assets/light.png?raw=true" width="344" height="86" style="max-width: 100%;">
   </picture>
   
 </p>
