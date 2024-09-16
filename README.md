@@ -1,9 +1,9 @@
 <p align="center">
   
   <picture> 
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/christianazinn/lmstudio-python/assets/dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/christianazinn/lmstudio-python/assets/light.png">
-    <img alt="lmstudio python library logo" src="https://github.com/christianazinn/lmstudio-python/assets/light.png" width="290" height="86" style="max-width: 100%;">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/christianazinn/lmstudio-python/blob/dark.png?raw=true">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/christianazinn/lmstudio-python/blob/light.png?raw=true">
+    <img alt="lmstudio python library logo" src="https://github.com/christianazinn/lmstudio-python/blob/assets/light.png?raw=true" width="290" height="86" style="max-width: 100%;">
   </picture>
   
 </p>
