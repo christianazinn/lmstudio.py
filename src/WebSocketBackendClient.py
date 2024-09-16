@@ -115,6 +115,7 @@ class WebSocketBackendClient:
     async def init_channel(
         self, endpoint: str, creation_parameter: dict, handler: Callable
     ) -> int:
+        assert self.websocket is not None
         channel_id = self.get_next_channel_id()
         payload = {
             "type": "channelCreate",
@@ -127,6 +128,7 @@ class WebSocketBackendClient:
         return channel_id
 
     async def rpc_call(self, endpoint: str, parameter: dict) -> int:
+        assert self.websocket is not None
         call_id = self.get_next_rpc_call_id()
         payload = {
             "type": "rpcCall",
