@@ -1,5 +1,9 @@
 import asyncio
-from WebSocketBackendClient import WebSocketBackendClient
+
+from AsyncIterable import StreamablePromise
+from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
+from utils import validate
 
 
 class LMStudioClient:
@@ -7,7 +11,7 @@ class LMStudioClient:
 
     # TODO other init options
     def __init__(self, websocket_uri: str):
-        self.client = WebSocketBackendClient(websocket_uri)
+        self.client = ClientPort(websocket_uri)
 
     async def connect(self):
         await self.client.connect()
@@ -22,7 +26,7 @@ class LMStudioClient:
         loading_complete = asyncio.Event()
         result = {}
 
-        async def handle_model_loading(message):
+        async def handle_communications(message):
             if message["type"] == "progress":
                 print(f"Loading progress: {message['progress'] * 100:.2f}%")
             elif message["type"] == "success":
@@ -36,10 +40,50 @@ class LMStudioClient:
             "noHup": False,
         }
 
-        await self.client.init_channel("loadModel", payload, handle_model_loading)
+        await self.client.init_channel("loadModel", payload, handle_communications)
 
         await loading_complete.wait()
         return result
+
+    def predict(self, model_path: str) -> StreamablePromise:
+        completion_stream = StreamablePromise()
+
+        async def handle_communications(message):
+            if message["type"] == "fragment":
+                await completion_stream.append(message["fragment"])
+            elif message["type"] == "success":
+                await completion_stream.append(None)  # Signal completion
+                completion_stream.done()
+
+        async def run_prediction():
+            payload = {
+                "modelSpecifier": {"type": "query", "query": {"identifier": model_path}},
+                "context": {
+                    "history": [{"role": "user", "content": [{"type": "text", "text": "Hello, how are you?"}]}]
+                },
+                "config": {},
+                "predictionConfigStack": {"layers": []},
+            }
+            await self.client.init_channel("predict", payload, handle_communications)
+
+        # Start the chat completion process without awaiting it
+        asyncio.create_task(run_prediction())
+
+        return completion_stream
+
+    async def getLoadConfig(self, identifier: str):
+        model_specifier = {
+            "type": "query",
+            "query": {
+                "identifier": identifier,
+            },
+        }
+
+        result = await self.client.call_rpc("getLoadConfig", {"specifier": model_specifier})
+        if validate(result, KVConfig):
+            return result
+        else:
+            raise ValueError("Invalid response from server")
 
     async def unload_model(self, model_path: str):
         await self.client.rpc_call("unloadModel", {"identifier": model_path})
