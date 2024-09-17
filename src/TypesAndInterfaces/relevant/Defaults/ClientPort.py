@@ -6,14 +6,20 @@ from typing import Callable, Dict, Any
 import websockets
 
 
+auth_version = 1
+
+
 class ClientPort:
     _next_channel_id = 0
     _next_rpc_call_id = 0
     _channel_id_lock = threading.Lock()
     _rpc_call_id_lock = threading.Lock()
 
-    def __init__(self, uri: str):
-        self.uri = uri
+    # TODO enums for allowable channel and rpc endpoints
+    def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
+        self.uri = uri + endpoint
+        self.identifier = identifier
+        self.passkey = passkey
         self.websocket = None
         self.channel_handlers: Dict[int, Callable] = {}
         self.rpc_handlers: Dict[int, Callable] = {}
@@ -39,9 +45,9 @@ class ClientPort:
         await self.websocket.send(
             json.dumps(
                 {
-                    "authVersion": 1,
-                    "clientIdentifier": "pytest",
-                    "clientPasskey": "pytest",
+                    "authVersion": auth_version,
+                    "clientIdentifier": self.identifier,
+                    "clientPasskey": self.passkey,
                 }
             )
         )
@@ -108,10 +114,15 @@ class ClientPort:
             "channelId": channel_id,
         }
         if creation_parameter is not None:
-            payload["creationParameter"] = creation_parameter
+            payload.set("creationParameter", creation_parameter)
         self.channel_handlers[channel_id] = handler
         await self.websocket.send(json.dumps(payload))
         return channel_id
+
+    async def send_channel_message(self, channel_id: int, payload: dict):
+        assert self.websocket is not None
+        payload.set("channelId", channel_id)
+        await self.websocket.send(json.dumps(payload))
 
     # TODO type hint for return type
     async def call_rpc(self, endpoint: str, parameter: Any | None):
@@ -133,7 +144,7 @@ class ClientPort:
             "callId": call_id,
         }
         if parameter is not None:
-            payload["parameter"] = parameter
+            payload.set("parameter", parameter)
         self.rpc_handlers[call_id] = rpc_handler
 
         await self.websocket.send(json.dumps(payload))

@@ -1,17 +1,15 @@
-from dataclasses import dataclass
 from typing import Literal, Callable
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
-@dataclass
-class DiagnosticsLogEventData:
+class DiagnosticsLogEventData(ConfiguredBaseModel):
     type: Literal["llm.prediction.input"]
     modelPath: str
     modelIdentifier: str
     input: str
 
 
-@dataclass
-class DiagnosticsLogEvent:
+class DiagnosticsLogEvent(ConfiguredBaseModel):
     timestamp: int
     data: DiagnosticsLogEventData
 

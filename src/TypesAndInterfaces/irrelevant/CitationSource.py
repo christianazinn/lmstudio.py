@@ -1,9 +1,8 @@
 from typing import Union, Optional
-from dataclasses import dataclass
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
-@dataclass
-class CitationSource:
+class CitationSource(ConfiguredBaseModel):
     """
     Represents a source of a citation.
 

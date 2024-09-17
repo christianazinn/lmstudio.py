@@ -1,6 +1,6 @@
 import asyncio
 
-from AsyncIterable import StreamablePromise
+from TypesAndInterfaces.relevant.Defaults.StreamablePromise import StreamablePromise
 from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
 
@@ -8,8 +8,6 @@ from TypesAndInterfaces.relevant.Namespaces.SystemNamespace import SystemNamespa
 
 
 class LMStudioClient:
-    master_channel_id = 0
-
     # TODO other init options
     def __init__(self, websocket_uri: str):
         self.client = ClientPort(websocket_uri)
@@ -34,6 +32,7 @@ class LMStudioClient:
                 result.update(message)
                 loading_complete.set()
 
+        # TODO use json .get("key", default) instead of dict accessors
         # TODO: typing ugh
         payload = {
             "path": model_path,
@@ -82,10 +81,9 @@ class LMStudioClient:
 
         result = await self.client.call_rpc("getLoadConfig", {"specifier": model_specifier})
         return KVConfig.model_validate(result)
-    
+
     async def list_downloaded_models(self):
-        systemNamespace = SystemNamespace()
-        systemNamespace.port = self.client
+        systemNamespace = SystemNamespace(self.client)
         return await systemNamespace.list_downloaded_models()
 
     async def unload_model(self, model_path: str):

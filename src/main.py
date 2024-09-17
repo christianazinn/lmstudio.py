@@ -1,6 +1,6 @@
 import asyncio
 
-from LMStudioClient import LMStudioClient
+from OldLMStudioClient import LMStudioClient
 
 
 async def main():

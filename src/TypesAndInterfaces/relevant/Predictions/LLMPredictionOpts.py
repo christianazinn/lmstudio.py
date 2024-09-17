@@ -74,7 +74,7 @@ class LLMPredictionOpts(LLMPredictionConfig):
     you can override for the LLM. See `LLMPredictionConfig` for more information.
     """
 
-    onPromptProcessingProgress: Optional[Callable[[float], None]] = Field(
+    on_prompt_processing_progress: Optional[Callable[[float], None]] = Field(
         default=None,
         description="""
     A callback that is called when the model is processing the prompt. The callback is called with
@@ -84,7 +84,7 @@ class LLMPredictionOpts(LLMPredictionConfig):
     """,
     )
 
-    onFirstToken: Optional[Callable[[], None]] = Field(
+    on_first_token: Optional[Callable[[], None]] = Field(
         default=None,
         description="""
     A callback that is called when the model has output the first token.

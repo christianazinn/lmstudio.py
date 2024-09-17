@@ -6,7 +6,10 @@ from TypesAndInterfaces.relevant.ModelDescriptors.DownloadedModel import Downloa
 
 
 class SystemNamespace:
-    port: ClientPort
+    __port: ClientPort
+
+    def __init__(self, port: ClientPort):
+        self.__port = port
 
     async def list_downloaded_models(self) -> List[DownloadedModel]:
         """
@@ -14,4 +17,4 @@ class SystemNamespace:
         """
         # TODO: the list returned is broken in ClientPort call_rpc because of comprotinc
         adapter = TypeAdapter(List[DownloadedModel])
-        return adapter.validate_python(await self.port.call_rpc("listDownloadedModels", None))
+        return adapter.validate_python(await self.__port.call_rpc("listDownloadedModels", None))

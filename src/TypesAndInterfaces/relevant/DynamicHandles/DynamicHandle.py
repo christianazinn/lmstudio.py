@@ -21,6 +21,10 @@ class DynamicHandle(ConfiguredBaseModel):
     port: ClientPort
     specifier: ModelSpecifier
 
+    def __init__(self, port: ClientPort, specifier: ModelSpecifier):
+        self.port = port
+        self.specifier = specifier
+
     async def get_model_info(self) -> Optional[ModelDescriptor]:
         """
         Gets the information of the model that is currently associated with this `LLMModel`. If no
@@ -32,7 +36,7 @@ class DynamicHandle(ConfiguredBaseModel):
         info = await self.port.call_rpc("getModelInfo", {"specifier": self.specifier, "throwIfNotFound": False})
         if info is None:
             return None
-        return info["descriptor"]
+        return info.get("descriptor", None)
 
     async def get_load_config(self) -> KVConfig:
         load_config = await self.port.call_rpc("getLoadConfig", {"specifier": self.specifier})
