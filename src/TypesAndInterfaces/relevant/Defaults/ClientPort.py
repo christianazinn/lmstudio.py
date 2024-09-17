@@ -1,7 +1,7 @@
 import asyncio
 import json
 import threading
-from typing import Callable, Dict
+from typing import Callable, Dict, Any
 
 import websockets
 
@@ -99,21 +99,22 @@ class ClientPort:
             self.running = False
 
     # TODO: endpoint enum
-    async def create_channel(self, endpoint: str, creation_parameter: dict, handler: Callable) -> int:
+    async def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
         assert self.websocket is not None
         channel_id = self.get_next_channel_id()
         payload = {
             "type": "channelCreate",
             "endpoint": endpoint,
             "channelId": channel_id,
-            "creationParameter": creation_parameter,
         }
+        if creation_parameter is not None:
+            payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
         await self.websocket.send(json.dumps(payload))
         return channel_id
 
     # TODO type hint for return type
-    async def call_rpc(self, endpoint: str, parameter: dict):
+    async def call_rpc(self, endpoint: str, parameter: Any | None):
         assert self.websocket is not None
 
         # TODO make sure this works!
@@ -130,8 +131,9 @@ class ClientPort:
             "type": "rpcCall",
             "endpoint": endpoint,
             "callId": call_id,
-            "parameter": parameter,
         }
+        if parameter is not None:
+            payload["parameter"] = parameter
         self.rpc_handlers[call_id] = rpc_handler
 
         await self.websocket.send(json.dumps(payload))

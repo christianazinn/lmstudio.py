@@ -3,7 +3,8 @@ import asyncio
 from AsyncIterable import StreamablePromise
 from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
-from utils import validate
+
+from TypesAndInterfaces.relevant.Namespaces.SystemNamespace import SystemNamespace
 
 
 class LMStudioClient:
@@ -40,7 +41,7 @@ class LMStudioClient:
             "noHup": False,
         }
 
-        await self.client.init_channel("loadModel", payload, handle_communications)
+        await self.client.create_channel("loadModel", payload, handle_communications)
 
         await loading_complete.wait()
         return result
@@ -64,7 +65,7 @@ class LMStudioClient:
                 "config": {},
                 "predictionConfigStack": {"layers": []},
             }
-            await self.client.init_channel("predict", payload, handle_communications)
+            await self.client.create_channel("predict", payload, handle_communications)
 
         # Start the chat completion process without awaiting it
         asyncio.create_task(run_prediction())
@@ -80,10 +81,12 @@ class LMStudioClient:
         }
 
         result = await self.client.call_rpc("getLoadConfig", {"specifier": model_specifier})
-        if validate(result, KVConfig):
-            return result
-        else:
-            raise ValueError("Invalid response from server")
+        return KVConfig.model_validate(result)
+    
+    async def list_downloaded_models(self):
+        systemNamespace = SystemNamespace()
+        systemNamespace.port = self.client
+        return await systemNamespace.list_downloaded_models()
 
     async def unload_model(self, model_path: str):
-        await self.client.rpc_call("unloadModel", {"identifier": model_path})
+        await self.client.call_rpc("unloadModel", {"identifier": model_path})

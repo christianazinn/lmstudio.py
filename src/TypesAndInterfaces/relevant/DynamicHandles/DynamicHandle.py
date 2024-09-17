@@ -8,6 +8,16 @@ from LLMGeneralSettings.KVConfig import KVConfig
 
 
 class DynamicHandle(ConfiguredBaseModel):
+    """
+    This represents a set of requirements for a model. It is not tied to a specific model, but rather
+    to a set of requirements that a model must satisfy.
+
+    For example, if you got the model via `client.llm.get("my-identifier")`, you will get a
+    `LLMModel` for the model with the identifier `my-identifier`. If the model is unloaded, and
+    another model is loaded with the same identifier, using the same `LLMModel` will use the new
+    model.
+    """
+
     port: ClientPort
     specifier: ModelSpecifier
 
@@ -25,12 +35,5 @@ class DynamicHandle(ConfiguredBaseModel):
         return info["descriptor"]
 
     async def get_load_config(self) -> KVConfig:
-        load_config = await self.port.callRpc("getLoadConfig", {"specifier": self.specifier})
-        return load_config
-
-
-# Note: The `get_current_stack` function is not provided in the original TypeScript code.
-# You might need to implement this function separately or import it from the appropriate module.
-def get_current_stack(depth: int) -> str:
-    # Implementation of get_current_stack goes here
-    pass
+        load_config = await self.port.call_rpc("getLoadConfig", {"specifier": self.specifier})
+        return KVConfig.model_validate(load_config)

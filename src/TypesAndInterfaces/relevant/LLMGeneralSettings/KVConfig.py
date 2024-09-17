@@ -1,5 +1,5 @@
 from typing import List, Any
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class KVConfigField(ConfiguredBaseModel):
