@@ -1,6 +1,5 @@
 from typing import List, Union, Literal
-from pydantic import Field
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing_extensions import TypedDict
 
 LLMLlamaAccelerationOffloadRatio = Union[float, Literal["max", "off"]]
 """
@@ -15,11 +14,22 @@ This type can be:
 """
 
 
-class LLMLlamaAccelerationSetting(ConfiguredBaseModel):
+class LLMLlamaAccelerationSetting(TypedDict):
     """
     Settings related to offloading work to the GPU.
     """
 
-    ratio: LLMLlamaAccelerationOffloadRatio = Field(..., description="The offload ratio for GPU acceleration.")
-    mainGpu: int = Field(..., description="The index of the main GPU to use.")
-    tensorSplit: List[float] = Field(..., description="The tensor split configuration for multi-GPU setups.")
+    ratio: LLMLlamaAccelerationOffloadRatio
+    """
+    The offload ratio for GPU acceleration.
+    """
+
+    mainGpu: int
+    """
+    The index of the main GPU to use.
+    """
+
+    tensorSplit: List[float]
+    """
+    The tensor split configuration for multi-GPU setups.
+    """

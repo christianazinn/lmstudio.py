@@ -1,13 +1,13 @@
 from typing import List, Literal, Union
 from abc import ABC, abstractmethod
-from relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing_extensions import TypedDict
 
 
-class PredictionStepController(ConfiguredBaseModel):
+class PredictionStepController(TypedDict):
     pass
 
 
-class ProcessorInputFile(ConfiguredBaseModel):
+class ProcessorInputFile(TypedDict):
     identifier: str
     type: "ProcessorInputFileType"
     sizeBytes: int
@@ -19,17 +19,17 @@ ProcessorInputFileType = Literal["image", "text/plain", "text/other", "applicati
 ProcessorInputMessageRole = Literal["system", "user", "assistant"]
 
 
-class ProcessorInputMessage(ConfiguredBaseModel):
+class ProcessorInputMessage(TypedDict):
     role: ProcessorInputMessageRole
     text: str
     files: List[ProcessorInputFile]
 
 
-class ProcessorInputContext(ConfiguredBaseModel):
+class ProcessorInputContext(TypedDict):
     history: List[ProcessorInputMessage]
 
 
-class PromptPreprocessController(ConfiguredBaseModel):
+class PromptPreprocessController(TypedDict):
     pass
 
 
@@ -44,7 +44,7 @@ class PromptPreprocessor(ABC):
         pass
 
 
-class StatusStepState(ConfiguredBaseModel):
+class StatusStepState(TypedDict):
     status: "StatusStepStatus"
     text: str
 

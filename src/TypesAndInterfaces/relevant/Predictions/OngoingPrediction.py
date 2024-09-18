@@ -1,4 +1,5 @@
 from __future__ import annotations
+from asyncio import Future
 from typing import Optional, Callable, List, Any
 from TypesAndInterfaces.relevant.Defaults.StreamablePromise import StreamablePromise
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
@@ -68,6 +69,7 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
             load_model_config: KVConfig,
             prediction_config: KVConfig,
         ) -> None:
+            print("hi")
             ongoing_prediction._stats = stats
             ongoing_prediction._model_info = model_info
             ongoing_prediction._load_model_config = load_model_config
@@ -82,7 +84,7 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
 
         return ongoing_prediction, finished, failed, push
 
-    async def result(self) -> PredictionResult:
+    def result(self) -> Future[PredictionResult]:
         """
         Get the final prediction results. If you have been streaming the results, awaiting on this
         method will take no extra effort, as the results are already available in the internal buffer.
@@ -107,7 +109,7 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
         await prediction
         ```
         """
-        return self
+        return self.promise_final
 
     async def cancel(self) -> None:
         """

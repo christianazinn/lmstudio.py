@@ -1,11 +1,10 @@
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
-from pydantic import Field
+from typing_extensions import TypedDict
 from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
 
 
-class PredictionResult(ConfiguredBaseModel):
+class PredictionResult(TypedDict):
     """
     Represents the result of a prediction.
 
@@ -13,11 +12,17 @@ class PredictionResult(ConfiguredBaseModel):
     Additionally, the `stats` property contains statistics about the prediction.
     """
 
-    content: str = Field(..., description="The newly generated text as predicted by the LLM.")
-    stats: LLMPredictionStats = Field(..., description="Statistics about the prediction.")
-    model_info: ModelDescriptor = Field(..., description="Information about the model used for the prediction.")
-    load_config: KVConfig = Field(..., description="The configuration used to load the model.")
-    prediction_config: KVConfig = Field(..., description="The configuration used for the prediction.")
+    content: str
+    """The newly generated text as predicted by the LLM."""
 
-    class Config:
-        allow_population_by_field_name = True
+    stats: LLMPredictionStats
+    """Statistics about the prediction."""
+
+    model_info: ModelDescriptor
+    """Information about the model used for the prediction."""
+
+    load_config: KVConfig
+    """The configuration used to load the model."""
+
+    prediction_config: KVConfig
+    """The configuration used for the prediction."""

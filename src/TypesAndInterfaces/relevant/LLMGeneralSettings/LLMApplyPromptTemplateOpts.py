@@ -1,27 +1,18 @@
-from typing import Optional
-from pydantic import Field
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing import NotRequired
+from typing_extensions import TypedDict
 
 
-class LLMApplyPromptTemplateOpts(ConfiguredBaseModel):
+class LLMApplyPromptTemplateOpts(TypedDict):
     """
     Options for applying a prompt template.
     """
 
-    omit_bos_token: Optional[bool] = Field(
-        default=None,
-        description="""
+    omit_bos_token: NotRequired[bool]
+    """
     Whether to omit the BOS token when formatting.
+    """
 
-    Default: False
-    """,
-    )
-
-    omit_eos_token: Optional[bool] = Field(
-        default=None,
-        description="""
+    omit_eos_token: NotRequired[bool]
+    """
     Whether to omit the EOS token when formatting.
-
-    Default: False
-    """,
-    )
+    """

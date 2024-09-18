@@ -73,6 +73,7 @@ class ClientPort:
                 print("Message received: ", data)
 
                 # TODO: more robust data handling
+                # TODO: .get()
                 if "type" in data:
                     # channel endpoints
                     if data["type"] == "channelSend":
@@ -90,6 +91,8 @@ class ClientPort:
                             del self.channel_handlers[channel_id]
 
                     # RPC endpoints
+                    # TODO currently we handle errors two semantic levels up whereas it should be one
+                    # implement error handling with the same semantics as channels
                     elif data["type"] == "rpcResult" or data["type"] == "rpcError":
                         call_id = data["callId"]
                         if call_id in self.rpc_handlers:
@@ -106,6 +109,7 @@ class ClientPort:
 
     # TODO: endpoint enum
     # TODO: ensure handler is async
+    # TODO: un-async everything!
     async def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
         assert self.websocket is not None
         channel_id = self.get_next_channel_id()
@@ -122,7 +126,7 @@ class ClientPort:
 
     async def send_channel_message(self, channel_id: int, payload: dict):
         assert self.websocket is not None
-        payload.set("channelId", channel_id)
+        payload["channelId"] = channel_id
         await self.websocket.send(json.dumps(payload))
 
     # TODO type hint for return type
@@ -135,7 +139,8 @@ class ClientPort:
         result = {}
 
         async def rpc_handler(data):
-            result.update(data["result"])
+            nonlocal result
+            result.update(data)
             complete.set()
 
         call_id = self.get_next_rpc_call_id()
@@ -150,4 +155,7 @@ class ClientPort:
 
         await self.websocket.send(json.dumps(payload))
         await complete.wait()
-        return result
+        if "error" in result:
+            raise Exception(result["error"])
+        assert "result" in result
+        return result["result"]

@@ -1,6 +1,7 @@
 from typing import List
 
 from TypesAndInterfaces.relevant.DynamicHandles.DynamicHandle import DynamicHandle
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import find_key_in_kv_config
 
 
 class EmbeddingDynamicHandle(DynamicHandle):
@@ -23,7 +24,6 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        assert isinstance(input_string, str)
         return await self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
 
     async def unstable_get_context_length(self) -> int:
@@ -32,7 +32,8 @@ class EmbeddingDynamicHandle(DynamicHandle):
 
         :return: The context length as an integer.
         """
-        return (await self.get_load_config()).get("contextLength", -1)
+        context_length = find_key_in_kv_config(await self.get_load_config(), "contextLength")
+        return context_length if context_length is not None else -1
 
     async def unstable_get_eval_batch_size(self) -> int:
         """
@@ -40,7 +41,8 @@ class EmbeddingDynamicHandle(DynamicHandle):
 
         :return: The evaluation batch size as an integer.
         """
-        return (await self.get_load_config()).get("embedding.load.llama.evalBatchSize", -1)
+        batch_size = find_key_in_kv_config(await self.get_load_config(), "embedding.load.llama.evalBatchSize")
+        return batch_size if batch_size is not None else -1
 
     async def unstable_tokenize(self, input_string: str) -> List[int]:
         """

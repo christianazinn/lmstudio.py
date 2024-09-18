@@ -1,8 +1,7 @@
-from pydantic import Field
-from typing import Union, TypeVar, Callable, Optional, Generic
+from typing_extensions import TypedDict
+from typing import Union, TypeVar, Callable, NotRequired, Generic
 from enum import Enum
 from TypesAndInterfaces.relevant.Defaults.AbortSignal import AbortSignal
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class LogLevel(Enum):
@@ -15,10 +14,9 @@ class LogLevel(Enum):
 TLoadModelConfig = TypeVar("TLoadModelConfig")
 
 
-class BaseLoadModelOpts(ConfiguredBaseModel, Generic[TLoadModelConfig]):
-    identifier: Optional[str] = Field(
-        default=None,
-        description="""
+class BaseLoadModelOpts(TypedDict, Generic[TLoadModelConfig]):
+    identifier: NotRequired[str]
+    """
     The identifier to use for the loaded model.
 
     By default, the identifier is the same as the path (1st parameter). If the identifier already
@@ -26,19 +24,15 @@ class BaseLoadModelOpts(ConfiguredBaseModel, Generic[TLoadModelConfig]):
 
     However, when the identifier is specified and it is in use, an error will be thrown. If the
     call is successful, it is guaranteed that the loaded model will have the specified identifier.
-    """,
-    )
+    """
 
-    config: Optional[TLoadModelConfig] = Field(
-        default=None,
-        description="""
+    config: NotRequired[TLoadModelConfig]
+    """
     The configuration to use when loading the model.
-    """,
-    )
+    """
 
-    signal: Optional[AbortSignal] = Field(
-        default=None,
-        description="""
+    signal: NotRequired[AbortSignal]
+    """
     An `AbortSignal` to cancel the model loading. This is useful if you wish to add a functionality
     to cancel the model loading.
 
@@ -59,12 +53,11 @@ class BaseLoadModelOpts(ConfiguredBaseModel, Generic[TLoadModelConfig]):
     ```
 
     AbortSignal is the Python equivalent of JavaScript's AbortSignal for cancelling asynchronous operations.
-    """,
-    )
+    """
 
-    verbose: Union[bool, LogLevel] = Field(
-        default=LogLevel.INFO,
-        description="""
+    # TODO: in TS verbose would default to False, so make sure to handle this
+    verbose: NotRequired[Union[bool, LogLevel]]
+    """
     Controls the logging of model loading progress.
 
     - If set to `True`, logs progress at the "info" level.
@@ -76,15 +69,12 @@ class BaseLoadModelOpts(ConfiguredBaseModel, Generic[TLoadModelConfig]):
     Progress logs will be disabled if an `on_progress` callback is provided.
 
     Default value is LogLevel.INFO, which logs progress at the "info" level.
-    """,
-    )
+    """
 
-    on_progress: Optional[Callable[[float], None]] = Field(
-        default=None,
-        description="""
+    on_progress: NotRequired[Callable[[float], None]]
+    """
     A function that is called with the progress of the model loading. The function is called with a
     number between 0 and 1, inclusive, representing the progress of the model loading.
 
     If an `on_progress` callback is provided, verbose progress logs will be disabled.
-    """,
-    )
+    """

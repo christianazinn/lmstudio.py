@@ -21,6 +21,7 @@ lms_default_ports = [1234]
 
 class LMStudioClient:
     client_identifier: str
+    base_url: str | None
 
     llm: LLMNamespace
     embedding: EmbeddingNamespace
@@ -37,7 +38,7 @@ class LMStudioClient:
 
         if url.scheme not in ["ws", "wss"]:
             raise ValueError(f"""
-                    Failed to construct LMStudioClient. The baseUrl passed in must have protocol "ws" or "wss". 
+                    Failed to construct LMStudioClient. The baseUrl passed in must have protocol "ws" or "wss".
                     Received: {base_url}
                 """)
 
@@ -66,13 +67,10 @@ class LMStudioClient:
                 """)
 
     async def __is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
-        url = f"http://127.0.0.1:{port}/lmstudio-greeting"
-        parsed_url = urlparse(url)
-
         def fetch():
-            conn = HTTPConnection(parsed_url.hostname, parsed_url.port)
+            conn = HTTPConnection("127.0.0.1", port)
             try:
-                conn.request("GET", parsed_url.path)
+                conn.request("GET", "lmstudio-greeting")
                 response = conn.getresponse()
                 if response.status != 200:
                     raise ValueError("Status is not 200.")
@@ -119,24 +117,29 @@ class LMStudioClient:
 
     # ensure you connect and close properly!
     def __init__(self, opts: LMStudioClientConstructorOpts):
-        opts = LMStudioClientConstructorOpts.model_validate(opts)
-        self.client_identifier = opts.client_identifier if opts.client_identifier else generate_random_base64(18)
-        client_passkey = opts.client_passkey if opts.client_passkey else generate_random_base64(18)
-        base_url = opts.base_url if opts.base_url else self.__guess_base_url()
-        self.__validate_base_url_or_throw(base_url)
+        self.client_identifier = opts.get("client_identifier", generate_random_base64(18))
+        self.__client_passkey = opts.get("client_passkey", generate_random_base64(18))
+        # TODO: guess base url is async???? fuck! figure out a better way to do this
+        # for now logic is in connect()
+        self.base_url = opts.get("base_url", None)
+
+    # TODO: somehow do these in parallel since it takes a while
+    async def connect(self):
+        if self.base_url is None:
+            self.base_url = await self.__guess_base_url()
+        self.__validate_base_url_or_throw(self.base_url)
 
         # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints
-        llm_port = ClientPort(base_url, "llm", self.client_identifier, client_passkey)
-        embedding_port = ClientPort(base_url, "embedding", self.client_identifier, client_passkey)
-        system_port = ClientPort(base_url, "system", self.client_identifier, client_passkey)
-        diagnostics_port = ClientPort(base_url, "diagnostics", self.client_identifier, client_passkey)
+        llm_port = ClientPort(self.base_url, "llm", self.client_identifier, self.__client_passkey)
+        embedding_port = ClientPort(self.base_url, "embedding", self.client_identifier, self.__client_passkey)
+        system_port = ClientPort(self.base_url, "system", self.client_identifier, self.__client_passkey)
+        diagnostics_port = ClientPort(self.base_url, "diagnostics", self.client_identifier, self.__client_passkey)
 
         self.llm = LLMNamespace(llm_port)
         self.embedding = EmbeddingNamespace(embedding_port)
         self.system = SystemNamespace(system_port)
         self.diagnostics = DiagnosticsNamespace(diagnostics_port)
 
-    async def connect(self):
         await self.llm.connect()
         await self.embedding.connect()
         await self.system.connect()

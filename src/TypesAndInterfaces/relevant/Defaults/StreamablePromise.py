@@ -9,7 +9,7 @@ TFinal = TypeVar("TFinal")
 
 
 @dataclass
-class NextFragmentPromiseBundle:
+class NextFragmentPromiseBundle(Generic[TFragment]):
     resolve: Callable[[TFragment], None]
     reject: Callable[[Any], None]
     promise: asyncio.Future[TFragment]
@@ -47,7 +47,7 @@ class StreamablePromise(Generic[TFragment, TFinal], ABC):
         self.promise_final: asyncio.Future[TFinal] = asyncio.Future()
         self.status: str = "pending"
         self.buffer: List[TFragment] = []
-        self.next_fragment_promise_bundle: Optional[NextFragmentPromiseBundle] = None
+        self.next_fragment_promise_bundle: Optional[NextFragmentPromiseBundle[TFragment]] = None
         self.has_iterator: bool = False
 
     @abstractmethod
@@ -125,19 +125,19 @@ class StreamablePromise(Generic[TFragment, TFinal], ABC):
         if self.status == "resolved":
             raise StopAsyncIteration
         if self.status == "rejected":
-            raise self.promise_final.exception()
+            raise Exception()
         bundle = self._obtain_next_fragment_promise_bundle()
         try:
             return await bundle.promise
         except Exception:
             if self.status == "rejected":
-                raise self.promise_final.exception()
+                raise Exception()
             raise
 
-    def _obtain_next_fragment_promise_bundle(self) -> NextFragmentPromiseBundle:
+    def _obtain_next_fragment_promise_bundle(self) -> NextFragmentPromiseBundle[TFragment]:
         if self.next_fragment_promise_bundle:
             return self.next_fragment_promise_bundle
         promise = asyncio.Future()
-        bundle = NextFragmentPromiseBundle(resolve=promise.set_result, reject=promise.set_exception, promise=promise)
+        bundle = NextFragmentPromiseBundle[TFragment](resolve=promise.set_result, reject=promise.set_exception, promise=promise)
         self.next_fragment_promise_bundle = bundle
         return bundle

@@ -1,8 +1,8 @@
-from typing import Union, Optional
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing import Union, NotRequired
+from typing_extensions import TypedDict
 
 
-class CitationSource(ConfiguredBaseModel):
+class CitationSource(TypedDict):
     """
     Represents a source of a citation.
 
@@ -14,5 +14,5 @@ class CitationSource(ConfiguredBaseModel):
 
     fileName: str
     absoluteFilePath: str
-    pageNumber: Optional[Union[int, tuple[int, int]]] = None
-    lineNumber: Optional[Union[int, tuple[int, int]]] = None
+    pageNumber: NotRequired[Union[int, tuple[int, int]]]
+    lineNumber: NotRequired[Union[int, tuple[int, int]]]

@@ -1,14 +1,28 @@
-from typing import Literal, Optional
-from pydantic import Field
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing import Literal, NotRequired
+from typing_extensions import TypedDict
 
 
-class DownloadedModel(ConfiguredBaseModel):
+class DownloadedModel(TypedDict):
     """
     Represents a model that exists locally and can be loaded.
     """
 
-    type: Literal["llm", "embedding"] = Field(..., description="The type of the model.")
-    path: str = Field(..., description="The path of the model. Use to load the model.")
-    sizeBytes: int = Field(..., description="The size of the model in bytes.")
-    architecture: Optional[str] = Field(None, description="The architecture of the model.")
+    type: Literal["llm", "embedding"]
+    """
+    The type of the model.
+    """
+
+    path: str
+    """
+    The path of the model. Use to load the model.
+    """
+
+    sizeBytes: int
+    """
+    The size of the model in bytes.
+    """
+
+    architecture: NotRequired[str]
+    """
+    The architecture of the model.
+    """

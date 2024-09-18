@@ -1,15 +1,15 @@
 from typing import Literal, Callable
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing_extensions import TypedDict
 
 
-class DiagnosticsLogEventData(ConfiguredBaseModel):
+class DiagnosticsLogEventData(TypedDict):
     type: Literal["llm.prediction.input"]
     modelPath: str
     modelIdentifier: str
     input: str
 
 
-class DiagnosticsLogEvent(ConfiguredBaseModel):
+class DiagnosticsLogEvent(TypedDict):
     timestamp: int
     data: DiagnosticsLogEventData
 

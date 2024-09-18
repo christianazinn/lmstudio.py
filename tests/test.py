@@ -2,11 +2,10 @@ import asyncio
 import json
 from urllib.parse import urlparse
 from http.client import HTTPConnection
-from typing import Optional, Protocol, Any
-from pydantic import BaseModel, Field
+from typing import Optional, TypedDict, Any
 
 
-class LoggerInterface(Protocol):
+class LoggerInterface(TypedDict):
     def info(self, *messages: Any) -> None: ...
     def error(self, *messages: Any) -> None: ...
     def warn(self, *messages: Any) -> None: ...

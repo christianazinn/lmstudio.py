@@ -16,7 +16,14 @@ from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMApplyPromptTemplateOpts i
 from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
-from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig, KVConfigStack
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import (
+    KVConfig,
+    KVConfigStack,
+    KVConfigStackLayer,
+    KVConfigLayerName,
+    convert_dict_to_kv_config,
+    find_key_in_kv_config
+)
 from TypesAndInterfaces.relevant.Defaults.BufferedEvent import BufferedEvent
 
 
@@ -31,34 +38,44 @@ def number_to_checkbox_numeric(
         return {"checked": True, "value": value}
 
 
-def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig) -> KVConfig:
-    prediction_config = LLMPredictionConfig.model_validate(prediction_config)
-    # TODO maybe revisit when you convert naming conventions to Python
-    return KVConfig.convert_dict_to_kv_config(
-        {
-            "temperature": prediction_config.temperature,
-            "contextOverflowPolicy": prediction_config.contextOverflowPolicy,
-            "maxPredictedTokens": number_to_checkbox_numeric(prediction_config.maxPredictedTokens, -1, 1),
-            "stopStrings": prediction_config.stopStrings,
-            "structured": prediction_config.structured,
-            "topKSampling": prediction_config.topKSampling,
-            "repeatPenalty": number_to_checkbox_numeric(prediction_config.repeatPenalty, 1, 1, 1),
-            "minPSampling": number_to_checkbox_numeric(prediction_config.minPSampling, 0, 0.05),
-            "topPSampling": number_to_checkbox_numeric(prediction_config.topPSampling, 1, 0.95),
-            "llama.cpuThreads": prediction_config.cpuThreads,
-        }
-    )
+def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig | None) -> KVConfig:
+    fields = []
+    if prediction_config is not None:
+        # HACK i hate this
+        for default_key in ["temperature", "contextOverflowPolicy", "stopStrings", "structured", "topKSampling"]:
+            if default_key in prediction_config:
+                fields.append({"key": default_key, "value": prediction_config[default_key]})
+        if "maxPredictedTokens" in prediction_config:
+            fields.append(
+                {
+                    "key": "maxPredictedTokens",
+                    "value": number_to_checkbox_numeric(prediction_config["maxPredictedTokens"], -1, 1),
+                }
+            )
+        if "repeatPenalty" in prediction_config:
+            fields.append(
+                {"key": "repeatPenalty", "value": number_to_checkbox_numeric(prediction_config["repeatPenalty"], 1, 1)}
+            )
+        if "minPSampling" in prediction_config:
+            fields.append(
+                {"key": "minPSampling", "value": number_to_checkbox_numeric(prediction_config["minPSampling"], 0, 0.05)}
+            )
+        if "topPSampling" in prediction_config:
+            fields.append(
+                {"key": "topPSampling", "value": number_to_checkbox_numeric(prediction_config["topPSampling"], 1, 0.95)}
+            )
+        if "cpuThreads" in prediction_config:
+            fields.append({"key": "llama.cpuThreads", "value": prediction_config["cpuThreads"]})
+    return {"fields": fields}
 
 
 def split_opts(opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
-    opts = LLMPredictionOpts.model_validate(opts)
-    if "on_prompt_processing_progress" in opts:
-        on_prompt_processing_progress = opts.pop("on_prompt_processing_progress")
-    if "on_first_token" in opts:
-        on_first_token = opts.pop("on_first_token")
-    return opts, LLMPredictionExtraOpts(
-        on_prompt_processing_progress=on_prompt_processing_progress, on_first_token=on_first_token
-    )
+    extra_opts: LLMPredictionExtraOpts = {}
+    for key in ["on_prompt_processing_progress", "on_first_token"]:
+        if key in opts:
+            extra_opts[key] = opts[key]
+            del opts[key]
+    return opts, extra_opts
 
 
 class LLMDynamicHandle(DynamicHandle):
@@ -74,51 +91,47 @@ class LLMDynamicHandle(DynamicHandle):
     :public:
     """
 
-    __internal_kv_config_stack: KVConfigStack = {"layers": []}
+    __internal_kv_config_stack = KVConfigStack(layers=[])
 
-    def __predict_internal(
+    # TODO: un-async this
+    async def __predict_internal(
         self,
         modelSpecifier: ModelSpecifier,
         context: LLMContext,
         predictionConfigStack: KVConfigStack,
         cancel_event: BufferedEvent,
-        extraOpts: LLMPredictionOpts | None,
+        extraOpts: LLMPredictionExtraOpts,
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
     ):
-        assert isinstance(modelSpecifier, ModelSpecifier)
-        context = LLMContext.model_validate(context)
-        predictionConfigStack = KVConfigStack.model_validate(predictionConfigStack)
-        extraOpts = LLMPredictionOpts.model_validate(extraOpts) if extraOpts is not None else None
+        # TODO ModelSpecifier validation
         finished = False
 
         async def handle_fragments(message: dict):
             message_type = message.get("type", "")
+            print(message_type)
             if message_type == "fragment":
-                if on_fragment is not None:
-                    on_fragment(message.get("fragment", ""))
-                if extraOpts is not None and extraOpts.on_first_token is not None:
-                    extraOpts.on_first_token()
+                on_fragment(message.get("fragment", ""))
+                if "on_first_token" in extraOpts:
+                    extraOpts["on_first_token"]()
             elif message_type == "promptProcessingProgress":
-                if extraOpts is not None and extraOpts.on_prompt_processing_progress is not None:
-                    extraOpts.on_prompt_processing_progress(message.get("progress", 0.0))
-            elif message_type == "finished":
+                if "on_prompt_processing_progress" in extraOpts:
+                    extraOpts["on_prompt_processing_progress"](message.get("progress", 0.0))
+            elif message_type == "success":
                 nonlocal finished
                 finished = True
-                if on_finished is not None:
-                    on_finished(
-                        LLMPredictionStats.model_validate(message.get("stats", {})),
-                        ModelDescriptor.model_validate(message.get("descriptor", {})),
-                        KVConfig.model_validate(message.get("loadConfig", {})),
-                        KVConfig.model_validate(message.get("predictionConfig", {})),
-                    )
+                on_finished(
+                    message.get("stats", {}),
+                    message.get("descriptor", {}),
+                    message.get("loadConfig", {}),
+                    message.get("predictionConfig", {}),
+                )
             # FIXME this probably doesn't work
             elif message_type == "error":
-                if on_error is not None:
-                    on_error(Exception(message.get("message", "Unknown error")))
+                on_error(Exception(message.get("message", "Unknown error")))
 
-        channel_id = self.port.create_channel(
+        channel_id = await self.port.create_channel(
             "predict",
             {
                 "modelSpecifier": modelSpecifier,
@@ -130,11 +143,12 @@ class LLMDynamicHandle(DynamicHandle):
 
         def cancel_send():
             if not finished:
+                # TODO syncify this
                 self.port.send_channel_message(channel_id, {"type": "cancel"})
 
-        cancel_event.subscribe_once(cancel_send)
+        cancel_event.subscribeOnce(cancel_send)
 
-    def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts | None = None) -> OngoingPrediction:
+    async def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
         Use the loaded model to predict text.
 
@@ -180,19 +194,17 @@ class LLMDynamicHandle(DynamicHandle):
         :param prompt: The prompt to use for prediction.
         :param opts: Options for the prediction.
         """
-        prompt = LLMCompletionContextInput.model_validate(prompt)
-        opts = LLMPredictionOpts.model_validate(opts) if opts is not None else None
-
         config, extra_opts = split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
-        extra_opts.set("stopStrings", [])
-        api_override_layer = {"layerName": "apiOverride", "config": prediction_config_to_kv_config(config)}
-        complete_mode_formatting_layer = {
-            "layerName": "completeModeFormatting",
-            "config": KVConfig.convert_dict_to_kv_config(
+        config["stopStrings"] = []
+        prediction_layers = self.__internal_kv_config_stack.get("layers", [])
+        prediction_layers.append({"layerName": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)})
+        prediction_layers.append({
+            "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+            "config": convert_dict_to_kv_config(
                 {
                     "promptTemplate": {
                         "type": "jinja",
@@ -205,12 +217,10 @@ class LLMDynamicHandle(DynamicHandle):
                     }
                 }
             ),
-        }
-        prediction_layers = self.__internal_kv_config_stack.get("layers", [])
-        prediction_layers.append(api_override_layer)
-        prediction_layers.append(complete_mode_formatting_layer)
+        })
 
-        self.__predict_internal(
+        # TODO un-async me
+        await self.__predict_internal(
             self.specifier,
             self.__resolve_completion_context(prompt),
             {"layers": prediction_layers},
@@ -227,7 +237,7 @@ class LLMDynamicHandle(DynamicHandle):
     def __resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
         return {"history": [{"role": "user", "content": [{"type": "text", "text": contextInput}]}]}
 
-    def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts | None = None) -> OngoingPrediction:
+    async def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
         Use the loaded model to generate a response based on the given history.
 
@@ -277,9 +287,8 @@ class LLMDynamicHandle(DynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        history = LLMConversationContextInput.model_validate(history)
-        opts = LLMPredictionOpts.model_validate(opts) if opts is not None else None
-        return self.predict(self.__resolve_conversation_context(history), opts)
+        # TODO un-async me
+        return await self.predict(self.__resolve_conversation_context(history), opts)
 
     def __resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
         return {
@@ -289,26 +298,26 @@ class LLMDynamicHandle(DynamicHandle):
             ]
         }
 
-    def predict(self, context: LLMContext, opts: LLMPredictionOpts | None = None) -> OngoingPrediction:
+    # TODO: un-async this
+    async def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
         :alpha:
         """
-        context = LLMContext.model_validate(context)
-        opts = LLMPredictionOpts.model_validate(opts) if opts is not None else None
 
         config, extra_opts = split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
-        api_override_layer = {"layerName": "apiOverride", "config": prediction_config_to_kv_config(config)}
+        api_override_layer = KVConfigStackLayer(layerName=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config))
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
 
-        self.__predict_internal(
+        # TODO un-async me
+        await self.__predict_internal(
             self.specifier,
             context,
-            {"layers": prediction_layers},
+            KVConfigStack(layers=prediction_layers),
             cancel_event,
             extra_opts,
             lambda fragment: push(fragment),
@@ -320,13 +329,13 @@ class LLMDynamicHandle(DynamicHandle):
         return ongoing_prediction
 
     async def unstable_get_context_length(self) -> int:
-        return (await self.get_load_config()).get("contextLength", -1)
+        context_length = find_key_in_kv_config(await self.get_load_config(), "contextLength")
+        return context_length if context_length else -1
 
+    # TODO: should these be get or something else?
     async def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
-        context = LLMContext.model_validate(context)
-        opts = LLMApplyPromptTemplateOpts.model_validate(opts) if opts is not None else None
         return (
             await self.port.call_rpc(
                 "applyPromptTemplate",

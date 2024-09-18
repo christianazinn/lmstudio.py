@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, List, Union, Coroutine
+from typing import Generic, TypeVar, List, Union
 from abc import ABC, abstractmethod
 import asyncio
 
@@ -15,7 +15,8 @@ from TypesAndInterfaces.relevant.CallOptions.LLMLoadModelConfig import LLMLoadMo
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDomainType import ModelDomainType
 from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
-from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMLlamaAccelerationSetting import LLMLlamaAccelerationSetting
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig, convert_dict_to_kv_config
 
 # Type variables for generic types
 TClientPort = TypeVar("TClientPort", bound="ClientPort")
@@ -67,9 +68,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
     async def close(self) -> None:
         await self.__port.close()
 
-    def load(
-        self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
-    ) -> Coroutine[None, None, TSpecificModel]:
+    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
         optional object with additional options. By default, the model is loaded with the default
@@ -110,10 +109,6 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :param opts: Options for loading the model.
         :return: A promise that resolves to the model that can be used for inferencing
         """
-        assert isinstance(path, str)
-        # FIXME does this even work with Python generics?
-        BaseLoadModelOpts[TLoadModelConfig].model_validate(opts)
-
         # TODO logging
         promise = asyncio.Future()
         full_path: str = path
@@ -143,8 +138,8 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 )
             elif message_type == "progress":
                 progress = message.get("progress")
-                if opts.on_progress:
-                    opts.on_progress(progress)
+                if opts and "on_progress" in opts:
+                    opts["on_progress"](progress)
             elif message_type == "error":
                 reject(Exception(message.get("message", "Unknown error")))
 
@@ -152,13 +147,13 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             "loadModel",
             {
                 "path": path,
-                "identifier": opts.identifier,
+                "identifier": opts["identifier"] if opts and "identifier" in opts else path,
                 "loadConfigStack": {
                     "layers": [
                         {
                             "layerName": "apiOverride",
                             "config": self.load_config_to_kv_config(
-                                opts.config if opts.config else self._default_load_config
+                                opts["config"] if opts and "config" in opts else self._default_load_config
                             ),
                         }
                     ]
@@ -168,15 +163,20 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         )
 
         def on_cancel():
+            # TODO async things again
             self.__port.send_channel_message(channel_id, {"type": "cancel"})
             reject(Exception("Model loading was cancelled"))
 
-        if opts.signal:
-            opts.signal.register(on_cancel)
+        if opts and hasattr(opts, "signal"):
+            signal = opts.get("signal")
+            if signal is not None:
+                signal.add_listener(on_cancel)
 
+        # TODO: figure out why the type checker complains
         return promise
 
-    def unload(self, identifier: str) -> None:
+    # TODO un-asyuc me
+    async def unload(self, identifier: str) -> None:
         """
         Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
         model afterwards, you will need to load it with {@link LLMNamespace#loadModel} again.
@@ -184,9 +184,9 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :param identifier: The identifier of the model to unload.
         """
         assert isinstance(identifier, str)
-        return self.__port.call_rpc("unloadModel", {"identifier": identifier})
+        await self.__port.call_rpc("unloadModel", {"identifier": identifier})
 
-    def list_loaded(self) -> Coroutine[None, None, List[ModelDescriptor]]:
+    def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
@@ -275,8 +275,10 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         # TODO figure out how to do union type checking
         if isinstance(query, str):
             query = {"identifier": query}
-        if "path" in query and query.get("path").includes("\\"):
-            raise ValueError("Model path should not contain backslashes.")
+        if "path" in query:
+            path = query.get("path")
+            if path is not None and "\\" in path:
+                raise ValueError("Model path should not contain backslashes.")
 
         return self.create_domain_dynamic_handle(self.__port, {"type": "query", "query": query})
 
@@ -286,7 +288,6 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
 
         :alpha:
         """
-        assert isinstance(instance_reference, str)
         return self.create_domain_dynamic_handle(
             self.__port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
@@ -298,16 +299,13 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.
         """
-        assert isinstance(identifier, str)
-        assert isinstance(path, str)
-        if load_opts is not None:
-            BaseLoadModelOpts[TLoadModelConfig].model_validate(load_opts)
         try:
             model = await self.get({"identifier": identifier})
             return model
         except Exception:
-            load_opts.set("identifier", identifier)
-            return await self.load(path, load_opts)
+            if load_opts:
+                load_opts["identifier"] = identifier
+            return self.load(path, load_opts)
 
 
 # TODO use special EmbeddingClientPort
@@ -315,62 +313,67 @@ class EmbeddingNamespace(
     ModelNamespace[ClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel]
 ):
     _namespace = "embedding"
-    _default_load_config = {}
+    _default_load_config: EmbeddingLoadModelConfig = {}
 
     def load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
-        return KVConfig.convert_dict_to_kv_config(
+        return convert_dict_to_kv_config(
             {
-                "llama.acceleration.offloadRatio": config.gpuOffload.ratio if config.gpuOffload else None,
-                "llama.acceleration.mainGpu": config.gpuOffload.mainGpu if config.gpuOffload else None,
-                "llama.acceleration.tensorSplit": config.gpuOffload.tensorSplit if config.gpuOffload else None,
-                "contextLength": config.contextLength,
-                "llama.ropeFrequencyBase": config.ropeFrequencyBase,
-                "llama.ropeFrequencyScale": config.ropeFrequencyScale,
-                "llama.keepModelInMemory": config.keepModelInMemory,
-                "llama.tryMmap": config.tryMmap,
+                "llama.acceleration.offloadRatio": config.get("gpuOffload", {}).get("ratio"),
+                "llama.acceleration.mainGpu": config.get("gpuOffload", {}).get("mainGpu"),
+                "llama.acceleration.tensorSplit": config.get("gpuOffload", {}).get("tensorSplit"),
+                "contextLength": config.get("contextLength"),
+                "llama.ropeFrequencyBase": config.get("ropeFrequencyBase"),
+                "llama.ropeFrequencyScale": config.get("ropeFrequencyScale"),
+                "llama.keepModelInMemory": config.get("keepModelInMemory"),
+                "llama.tryMmap": config.get("tryMmap"),
             }
         )
 
     def create_domain_specific_model(
-        self, port: EmbeddingLoadModelConfig, instance_reference: str, descriptor: ModelDescriptor
+        self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
     def create_domain_dynamic_handle(
-        self, port: EmbeddingLoadModelConfig, specifier: ModelSpecifier
+        self, port: ClientPort, specifier: ModelSpecifier
     ) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
 class LLMNamespace(ModelNamespace[ClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel]):
     _namespace = "llm"
-    _default_load_config = {}
+    _default_load_config: LLMLoadModelConfig = {}
 
     def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
-        return KVConfig.convert_dict_to_kv_config(
-            {
-                "contextLength": config.contextLength,
-                "llama.evalBatchSize": config.evalBatchSize,
-                "llama.acceleration.offloadRatio": config.gpuOffload.ratio if config.gpuOffload else None,
-                "llama.acceleration.mainGpu": config.gpuOffload.mainGpu if config.gpuOffload else None,
-                "llama.acceleration.tensorSplit": config.gpuOffload.tensorSplit if config.gpuOffload else None,
-                "llama.flashAttention": config.flashAttention,
-                "llama.ropeFrequencyBase": config.ropeFrequencyBase,
-                "llama.ropeFrequencyScale": config.ropeFrequencyScale,
-                "llama.keepModelInMemory": config.keepModelInMemory,
-                "seed": config.seed,
-                "llama.useFp16ForKVCache": config.useFp16ForKVCache,
-                "llama.tryMmap": config.tryMmap,
-                "numExperts": config.numExperts,
-            }
-        )
+        # why is this implemented like this???
+        fields = {
+            "contextLength": config.get("contextLength"),
+            "llama.evalBatchSize": config.get("evalBatchSize"),
+            "llama.flashAttention": config.get("flashAttention"),
+            "llama.ropeFrequencyBase": config.get("ropeFrequencyBase"),
+            "llama.ropeFrequencyScale": config.get("ropeFrequencyScale"),
+            "llama.keepModelInMemory": config.get("keepModelInMemory"),
+            "seed": config.get("seed"),
+            "llama.useFp16ForKVCache": config.get("useFp16ForKVCache"),
+            "llama.tryMmap": config.get("tryMmap"),
+            "numExperts": config.get("numExperts"),
+        }
+        if "gpuOffload" in config:
+            gpu_offload = config.get("gpuOffload")
+            if isinstance(gpu_offload, float):
+                fields["llama.acceleration.offloadRatio"] = gpu_offload
+            else:
+                fields["llama.acceleration.offloadRatio"]: gpu_offload.get("ratio"),
+                fields["llama.acceleration.mainGpu"]: gpu_offload.get("mainGpu"),
+                fields["llama.acceleration.tensorSplit"]: gpu_offload.get("tensorSplit"),
+        return convert_dict_to_kv_config(fields)
 
     def create_domain_specific_model(
-        self, port: LLMLoadModelConfig, instance_reference: str, descriptor: ModelDescriptor
+        self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> LLMSpecificModel:
         return LLMSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(self, port: LLMLoadModelConfig, specifier: ModelSpecifier) -> LLMDynamicHandle:
+    def create_domain_dynamic_handle(self, port: ClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
 
     # TODO registerPromptPreprocessor

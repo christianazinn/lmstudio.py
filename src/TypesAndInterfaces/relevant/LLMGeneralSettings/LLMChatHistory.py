@@ -1,22 +1,24 @@
 from typing import List, Union, Literal
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from typing_extensions import TypedDict
 
 LLMChatHistoryMessageContent = List["LLMChatHistoryMessageContentPart"]
 """Represents the content of a message in the history."""
 
 
-class LLMChatHistoryMessageContentPartText(ConfiguredBaseModel):
-    type: Literal["text"] = "text"
+class LLMChatHistoryMessageContentPartText(TypedDict):
+    type: Literal["text"]
     text: str
 
 
-class LLMChatHistoryMessageContentPartImage(ConfiguredBaseModel):
-    type: Literal["imageBase64"] = "imageBase64"
+class LLMChatHistoryMessageContentPartImage(TypedDict):
+    type: Literal["imageBase64"]
     base64: str
 
 
 LLMChatHistoryMessageContentPart = Union[LLMChatHistoryMessageContentPartText, LLMChatHistoryMessageContentPartImage]
-"""Represents a part of the content of a message in the history."""
+"""
+Represents a part of the content of a message in the history.
+"""
 
 LLMChatHistoryRole = Literal["system", "user", "assistant"]
 """
@@ -28,7 +30,7 @@ Represents a role in a specific message in the history. This is a string enum, a
 """
 
 
-class LLMChatHistoryMessage(ConfiguredBaseModel):
+class LLMChatHistoryMessage(TypedDict):
     """
     Represents a single message in the history.
     """
@@ -38,10 +40,12 @@ class LLMChatHistoryMessage(ConfiguredBaseModel):
 
 
 LLMChatHistory = List[LLMChatHistoryMessage]
-"""Represents the history of a conversation, which is represented as an array of messages."""
+"""
+Represents the history of a conversation, which is represented as an array of messages.
+"""
 
 
-class LLMContext(ConfiguredBaseModel):
+class LLMContext(TypedDict):
     """
     Represents a raw context object that can be fed into the model.
     """
@@ -50,7 +54,9 @@ class LLMContext(ConfiguredBaseModel):
 
 
 LLMCompletionContextInput = str
-"""Represents the input context for a completion request. This is a string that represents the entire conversation history."""
+"""
+Represents the input context for a completion request. This is a string that represents the entire conversation history.
+"""
 
 LLMContextOverflowPolicy = Literal["stopAtLimit", "truncateMiddle", "rollingWindow"]
 """
@@ -64,7 +70,7 @@ Behavior for when the generated tokens length exceeds the context window size. O
 """
 
 
-class LLMConversationContextInputItem(ConfiguredBaseModel):
+class LLMConversationContextInputItem(TypedDict):
     role: LLMChatHistoryRole
     content: str
 

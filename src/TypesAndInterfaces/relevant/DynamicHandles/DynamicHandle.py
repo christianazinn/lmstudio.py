@@ -1,12 +1,11 @@
 from typing import Optional
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
 
 
-class DynamicHandle(ConfiguredBaseModel):
+class DynamicHandle:
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -21,8 +20,6 @@ class DynamicHandle(ConfiguredBaseModel):
     specifier: ModelSpecifier
 
     def __init__(self, port: ClientPort, specifier: ModelSpecifier):
-        # assert isinstance(specifier, ModelSpecifier)
-        assert isinstance(port, ClientPort)
         self.port = port
         self.specifier = specifier
 
@@ -40,5 +37,4 @@ class DynamicHandle(ConfiguredBaseModel):
         return info.get("descriptor", None)
 
     async def get_load_config(self) -> KVConfig:
-        load_config = await self.port.call_rpc("getLoadConfig", {"specifier": self.specifier})
-        return KVConfig.model_validate(load_config)
+        return await self.port.call_rpc("getLoadConfig", {"specifier": self.specifier})

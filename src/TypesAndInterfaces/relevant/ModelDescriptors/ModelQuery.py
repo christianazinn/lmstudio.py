@@ -1,20 +1,20 @@
-from typing import Optional
-from pydantic import Field
+from typing import NotRequired
+from typing_extensions import TypedDict
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDomainType import ModelDomainType
-from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
-class ModelQuery(ConfiguredBaseModel):
+class ModelQuery(TypedDict):
     """
     Represents a query for a loaded LLM.
 
     @public
     """
 
-    domain: Optional[ModelDomainType] = Field(default=None, description="The domain of the model.")
-    identifier: Optional[str] = Field(
-        default=None,
-        description="""
+    domain: NotRequired[ModelDomainType]
+    """The domain of the model."""
+
+    identifier: NotRequired[str]
+    """
     If specified, the model must have exactly this identifier.
 
     Note: The identifier of a model is set when loading the model. It defaults to the filename of
@@ -34,11 +34,10 @@ class ModelQuery(ConfiguredBaseModel):
     ```python
     model = client.llm.get(path="lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF")
     ```
-    """,
-    )
-    path: Optional[str] = Field(
-        default=None,
-        description="""
+    """
+
+    path: NotRequired[str]
+    """
     If specified, the model must have this path.
 
     When specifying the model path, you can use the following format:
@@ -64,5 +63,4 @@ class ModelQuery(ConfiguredBaseModel):
         path="lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf"
     )
     ```
-    """,
-    )
+    """
