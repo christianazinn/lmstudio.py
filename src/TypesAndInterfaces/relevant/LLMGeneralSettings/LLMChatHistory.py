@@ -1,5 +1,5 @@
 from typing import List, Union, Literal
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 LLMChatHistoryMessageContent = List["LLMChatHistoryMessageContentPart"]
 """Represents the content of a message in the history."""

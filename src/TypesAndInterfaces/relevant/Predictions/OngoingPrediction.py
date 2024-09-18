@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import Optional, Callable, List, Any
-from Defaults.StreamablePromise import StreamablePromise
-from LLMGeneralSettings.KVConfig import KVConfig
-from LLMPredictionStats import LLMPredictionStats
-from ModelDescriptors.ModelDescriptor import ModelDescriptor
-from PredictionResult import PredictionResult
+from TypesAndInterfaces.relevant.Defaults.StreamablePromise import StreamablePromise
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
+from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
+from TypesAndInterfaces.relevant.Predictions.PredictionResult import PredictionResult
 
 
 class OngoingPrediction(StreamablePromise[str, PredictionResult]):

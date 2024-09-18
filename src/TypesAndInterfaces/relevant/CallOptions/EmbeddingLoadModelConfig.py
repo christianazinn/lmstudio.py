@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import Field
-from LLMGeneralSettings.LLMLlamaAccelerationSetting import LLMLlamaAccelerationSetting
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMLlamaAccelerationSetting import LLMLlamaAccelerationSetting
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class EmbeddingLoadModelConfig(ConfiguredBaseModel):

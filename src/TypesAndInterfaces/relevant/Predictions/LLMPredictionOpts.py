@@ -1,8 +1,8 @@
 from typing import Optional, List, Callable
 from pydantic import Field
-from LLMGeneralSettings.LLMChatHistory import LLMContextOverflowPolicy
-from LLMGeneralSettings.LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMChatHistory import LLMContextOverflowPolicy
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class LLMPredictionConfig(ConfiguredBaseModel):
@@ -66,14 +66,7 @@ class LLMPredictionConfig(ConfiguredBaseModel):
     cpuThreads: Optional[int] = Field(default=None, description="TODO: Documentation")
 
 
-class LLMPredictionOpts(LLMPredictionConfig):
-    """
-    Shared options for any prediction methods (`.complete`/`.respond`).
-
-    Note, this class extends the `LLMPredictionConfig` class, which contains parameters that
-    you can override for the LLM. See `LLMPredictionConfig` for more information.
-    """
-
+class LLMPredictionExtraOpts(ConfiguredBaseModel):
     on_prompt_processing_progress: Optional[Callable[[float], None]] = Field(
         default=None,
         description="""
@@ -90,3 +83,14 @@ class LLMPredictionOpts(LLMPredictionConfig):
     A callback that is called when the model has output the first token.
     """,
     )
+
+
+class LLMPredictionOpts(LLMPredictionConfig, LLMPredictionExtraOpts):
+    """
+    Shared options for any prediction methods (`.complete`/`.respond`).
+
+    Note, this class extends the `LLMPredictionConfig` class, which contains parameters that
+    you can override for the LLM. See `LLMPredictionConfig` for more information.
+    """
+
+    pass

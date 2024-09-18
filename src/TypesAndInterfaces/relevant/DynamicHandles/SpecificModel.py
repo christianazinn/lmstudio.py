@@ -1,23 +1,18 @@
-from DynamicHandles.DynamicHandle import DynamicHandle
-from DynamicHandles.EmbeddingDynamicHandle import EmbeddingDynamicHandle
-from DynamicHandles.LLMDynamicHandle import LLMDynamicHandle
+from TypesAndInterfaces.relevant.DynamicHandles.DynamicHandle import DynamicHandle
+from TypesAndInterfaces.relevant.DynamicHandles.EmbeddingDynamicHandle import EmbeddingDynamicHandle
+from TypesAndInterfaces.relevant.DynamicHandles.LLMDynamicHandle import LLMDynamicHandle
+from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
 
 
 class SpecificModel(DynamicHandle):
     identifier: str
     specifier: str
 
-    # readonly
     class Config:
-        frozen = True
         arbitrary_types_allowed = True
         allow_population_by_field_name = True
         extra = "forbid"
-
-    def __init__(self, identifier: str, path: str, **data):
-        super().__init__(**data)
-        object.__setattr__(self, 'identifier', identifier)
-        object.__setattr__(self, 'path', path)
 
 
 class EmbeddingSpecificModel(EmbeddingDynamicHandle, SpecificModel):
@@ -27,7 +22,16 @@ class EmbeddingSpecificModel(EmbeddingDynamicHandle, SpecificModel):
 
     :public:
     """
-    pass
+
+    def __init__(self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor):
+        assert isinstance(port, ClientPort)
+        assert isinstance(instance_reference, str)
+        descriptor = ModelDescriptor.model_validate(descriptor)
+        EmbeddingDynamicHandle.__init__(
+            self, port, {"type": "instanceReference", "instanceReference": instance_reference}
+        )
+        self.identifier = descriptor.identifier
+        self.path = descriptor.path
 
 
 class LLMSpecificModel(LLMDynamicHandle, SpecificModel):
@@ -37,4 +41,11 @@ class LLMSpecificModel(LLMDynamicHandle, SpecificModel):
 
     :public:
     """
-    pass
+
+    def __init__(self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor):
+        assert isinstance(port, ClientPort)
+        assert isinstance(instance_reference, str)
+        descriptor = ModelDescriptor.model_validate(descriptor)
+        LLMDynamicHandle.__init__(self, port, {"type": "instanceReference", "instanceReference": instance_reference})
+        self.identifier = descriptor.identifier
+        self.path = descriptor.path

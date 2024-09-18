@@ -1,9 +1,8 @@
 from typing import List
 
-from DynamicHandles.DynamicHandle import DynamicHandle
+from TypesAndInterfaces.relevant.DynamicHandles.DynamicHandle import DynamicHandle
 
 
-# TODO implement
 class EmbeddingDynamicHandle(DynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather

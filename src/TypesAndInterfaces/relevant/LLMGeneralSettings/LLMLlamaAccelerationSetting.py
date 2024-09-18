@@ -1,6 +1,6 @@
 from typing import List, Union, Literal
 from pydantic import Field
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 LLMLlamaAccelerationOffloadRatio = Union[float, Literal["max", "off"]]
 """

@@ -1,7 +1,7 @@
 from typing import Literal, Union
 from pydantic import Field
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
-from ModelDescriptors.ModelQuery import ModelQuery
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelQuery import ModelQuery
 
 
 class QueryModel(ConfiguredBaseModel):

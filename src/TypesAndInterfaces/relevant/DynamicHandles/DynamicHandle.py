@@ -1,10 +1,9 @@
 from typing import Optional
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
-from Defaults.ClientPort import ClientPort
-from ModelDescriptors.ModelDescriptor import ModelDescriptor
-from ModelDescriptors.ModelSpecifier import ModelSpecifier
-from LLMGeneralSettings.KVConfig import KVConfig
-# TODO every kind of validation
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
 
 
 class DynamicHandle(ConfiguredBaseModel):
@@ -22,6 +21,8 @@ class DynamicHandle(ConfiguredBaseModel):
     specifier: ModelSpecifier
 
     def __init__(self, port: ClientPort, specifier: ModelSpecifier):
+        # assert isinstance(specifier, ModelSpecifier)
+        assert isinstance(port, ClientPort)
         self.port = port
         self.specifier = specifier
 

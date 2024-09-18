@@ -1,8 +1,8 @@
 from pydantic import Field
-from typing import Union, Callable, Optional
+from typing import Union, TypeVar, Callable, Optional, Generic
 from enum import Enum
-from Defaults.AbortSignal import AbortSignal
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.AbortSignal import AbortSignal
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class LogLevel(Enum):
@@ -12,7 +12,10 @@ class LogLevel(Enum):
     ERROR = "error"
 
 
-class BaseLoadModelOpts(ConfiguredBaseModel):
+TLoadModelConfig = TypeVar("TLoadModelConfig")
+
+
+class BaseLoadModelOpts(ConfiguredBaseModel, Generic[TLoadModelConfig]):
     identifier: Optional[str] = Field(
         default=None,
         description="""
@@ -26,7 +29,7 @@ class BaseLoadModelOpts(ConfiguredBaseModel):
     """,
     )
 
-    config: Optional[dict] = Field(
+    config: Optional[TLoadModelConfig] = Field(
         default=None,
         description="""
     The configuration to use when loading the model.

@@ -17,7 +17,7 @@ class ClientPort:
 
     # TODO enums for allowable channel and rpc endpoints
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
-        self.uri = uri + endpoint
+        self.uri = uri + "/" + endpoint
         self.identifier = identifier
         self.passkey = passkey
         self.websocket = None
@@ -105,6 +105,7 @@ class ClientPort:
             self.running = False
 
     # TODO: endpoint enum
+    # TODO: ensure handler is async
     async def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
         assert self.websocket is not None
         channel_id = self.get_next_channel_id()
@@ -114,7 +115,7 @@ class ClientPort:
             "channelId": channel_id,
         }
         if creation_parameter is not None:
-            payload.set("creationParameter", creation_parameter)
+            payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
         await self.websocket.send(json.dumps(payload))
         return channel_id
@@ -144,7 +145,7 @@ class ClientPort:
             "callId": call_id,
         }
         if parameter is not None:
-            payload.set("parameter", parameter)
+            payload["parameter"] = parameter
         self.rpc_handlers[call_id] = rpc_handler
 
         await self.websocket.send(json.dumps(payload))

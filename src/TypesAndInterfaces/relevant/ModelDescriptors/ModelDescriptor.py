@@ -1,5 +1,5 @@
 from pydantic import Field
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class ModelDescriptor(ConfiguredBaseModel):

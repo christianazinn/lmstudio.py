@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import Field
-from ModelDescriptors.ModelDomainType import ModelDomainType
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDomainType import ModelDomainType
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class ModelQuery(ConfiguredBaseModel):

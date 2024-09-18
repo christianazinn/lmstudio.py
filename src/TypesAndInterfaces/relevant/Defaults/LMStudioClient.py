@@ -120,9 +120,9 @@ class LMStudioClient:
     # ensure you connect and close properly!
     def __init__(self, opts: LMStudioClientConstructorOpts):
         opts = LMStudioClientConstructorOpts.model_validate(opts)
-        self.client_identifier = opts.get("client_identifier", generate_random_base64(18))
-        client_passkey = opts.get("client_passkey", generate_random_base64(18))
-        base_url = opts.get("base_url", self.__guess_base_url())
+        self.client_identifier = opts.client_identifier if opts.client_identifier else generate_random_base64(18)
+        client_passkey = opts.client_passkey if opts.client_passkey else generate_random_base64(18)
+        base_url = opts.base_url if opts.base_url else self.__guess_base_url()
         self.__validate_base_url_or_throw(base_url)
 
         # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints

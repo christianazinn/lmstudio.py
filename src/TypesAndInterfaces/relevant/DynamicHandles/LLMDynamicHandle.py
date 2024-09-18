@@ -1,37 +1,23 @@
-from typing import List, Callable, Optional, Dict, Union
-from threading import Lock
+from typing import List, Callable, Optional, Dict, Union, Tuple
 
-from DynamicHandles.DynamicHandle import DynamicHandle
-from Predictions.OngoingPrediction import OngoingPrediction
-from Predictions.LLMPredictionOpts import LLMPredictionOpts, LLMPredictionConfig
-from LLMGeneralSettings.LLMChatHistory import LLMConversationContextInput, LLMCompletionContextInput, LLMContext
-from LLMGeneralSettings.LLMApplyPromptTemplateOpts import LLMApplyPromptTemplateOpts
-from Predictions.LLMPredictionStats import LLMPredictionStats
-from ModelDescriptors.ModelDescriptor import ModelDescriptor
-from ModelDescriptors.ModelSpecifier import ModelSpecifier
-from LLMGeneralSettings.KVConfig import KVConfig, KVConfigStack
-
-
-# HACK
-class BufferedEvent:
-    def __init__(self):
-        self.subscribers: List[Callable[[], None]] = []
-        self.lock = Lock()
-
-    def subscribeOnce(self, callback: Callable[[], None]):
-        with self.lock:
-            self.subscribers.append(callback)
-
-    def emit(self):
-        with self.lock:
-            for subscriber in self.subscribers:
-                subscriber()
-            self.subscribers.clear()
-
-    @staticmethod
-    def create():
-        event = BufferedEvent()
-        return event, event.emit
+from TypesAndInterfaces.relevant.DynamicHandles.DynamicHandle import DynamicHandle
+from TypesAndInterfaces.relevant.Predictions.OngoingPrediction import OngoingPrediction
+from TypesAndInterfaces.relevant.Predictions.LLMPredictionOpts import (
+    LLMPredictionOpts,
+    LLMPredictionConfig,
+    LLMPredictionExtraOpts,
+)
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMChatHistory import (
+    LLMConversationContextInput,
+    LLMCompletionContextInput,
+    LLMContext,
+)
+from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMApplyPromptTemplateOpts import LLMApplyPromptTemplateOpts
+from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig, KVConfigStack
+from TypesAndInterfaces.relevant.Defaults.BufferedEvent import BufferedEvent
 
 
 def number_to_checkbox_numeric(
@@ -61,6 +47,17 @@ def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig) -> KV
             "topPSampling": number_to_checkbox_numeric(prediction_config.topPSampling, 1, 0.95),
             "llama.cpuThreads": prediction_config.cpuThreads,
         }
+    )
+
+
+def split_opts(opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+    opts = LLMPredictionOpts.model_validate(opts)
+    if "on_prompt_processing_progress" in opts:
+        on_prompt_processing_progress = opts.pop("on_prompt_processing_progress")
+    if "on_first_token" in opts:
+        on_first_token = opts.pop("on_first_token")
+    return opts, LLMPredictionExtraOpts(
+        on_prompt_processing_progress=on_prompt_processing_progress, on_first_token=on_first_token
     )
 
 
@@ -186,14 +183,13 @@ class LLMDynamicHandle(DynamicHandle):
         prompt = LLMCompletionContextInput.model_validate(prompt)
         opts = LLMPredictionOpts.model_validate(opts) if opts is not None else None
 
-        # TODO splitOpts
-        extra_opts = opts
+        config, extra_opts = split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         extra_opts.set("stopStrings", [])
-        api_override_layer = {"layerName": "apiOverride", "config": prediction_config_to_kv_config(extra_opts)}
+        api_override_layer = {"layerName": "apiOverride", "config": prediction_config_to_kv_config(config)}
         complete_mode_formatting_layer = {
             "layerName": "completeModeFormatting",
             "config": KVConfig.convert_dict_to_kv_config(
@@ -300,9 +296,7 @@ class LLMDynamicHandle(DynamicHandle):
         context = LLMContext.model_validate(context)
         opts = LLMPredictionOpts.model_validate(opts) if opts is not None else None
 
-        # TODO splitOpts
-        extra_opts = opts
-        config = opts
+        config, extra_opts = split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)

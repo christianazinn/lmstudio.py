@@ -1,8 +1,8 @@
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 from pydantic import Field
-from LLMPredictionStats import LLMPredictionStats
-from ModelDescriptors.ModelDescriptor import ModelDescriptor
-from LLMGeneralSettings.KVConfig import KVConfig
+from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
+from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
+from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig
 
 
 class PredictionResult(ConfiguredBaseModel):

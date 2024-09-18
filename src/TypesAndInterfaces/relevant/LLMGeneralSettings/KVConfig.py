@@ -13,7 +13,7 @@ class KVConfig(ConfiguredBaseModel):
 
     @staticmethod
     def convert_dict_to_kv_config(kv_dict: dict):
-        return KVConfig(fields=[KVConfigField(key=k, value=v) for k, v in kv_dict.items()])
+        return KVConfig(fields=[KVConfigField(key=k, value=v) for k, v in kv_dict.items() if v and v is not None])
 
 
 class KVConfigLayerName(Enum):

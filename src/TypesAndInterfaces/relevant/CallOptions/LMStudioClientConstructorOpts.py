@@ -1,6 +1,6 @@
 from typing import Optional, Protocol, Any
 from pydantic import Field
-from Defaults.ConfiguredBaseModel import ConfiguredBaseModel
+from TypesAndInterfaces.relevant.Defaults.ConfiguredBaseModel import ConfiguredBaseModel
 
 
 class LoggerInterface(Protocol):
@@ -11,7 +11,8 @@ class LoggerInterface(Protocol):
 
 
 class LMStudioClientConstructorOpts(ConfiguredBaseModel):
-    logger: Optional[LoggerInterface] = Field(
+    # TODO Pydantic does not like Protocol
+    logger: Optional[Any] = Field(
         default=None,
         description="""
     Changes the logger that is used by LMStudioClient internally. The default logger is `console`.
