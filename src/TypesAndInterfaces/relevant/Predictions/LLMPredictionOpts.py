@@ -1,5 +1,4 @@
-from typing import NotRequired, List, Callable
-from typing_extensions import TypedDict
+from typing import NotRequired, List, Callable, TypedDict
 from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMChatHistory import LLMContextOverflowPolicy
 from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
 

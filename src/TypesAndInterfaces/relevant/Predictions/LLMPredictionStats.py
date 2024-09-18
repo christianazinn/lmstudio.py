@@ -1,6 +1,5 @@
 from enum import Enum
-from typing import NotRequired
-from typing_extensions import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class LLMPredictionStopReason(str, Enum):

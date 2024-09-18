@@ -22,7 +22,7 @@ from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import (
     KVConfigStackLayer,
     KVConfigLayerName,
     convert_dict_to_kv_config,
-    find_key_in_kv_config
+    find_key_in_kv_config,
 )
 from TypesAndInterfaces.relevant.Defaults.BufferedEvent import BufferedEvent
 
@@ -114,10 +114,10 @@ class LLMDynamicHandle(DynamicHandle):
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
                 if "on_first_token" in extraOpts:
-                    extraOpts["on_first_token"]()
+                    extraOpts.get("on_first_token")()
             elif message_type == "promptProcessingProgress":
                 if "on_prompt_processing_progress" in extraOpts:
-                    extraOpts["on_prompt_processing_progress"](message.get("progress", 0.0))
+                    extraOpts.get("on_prompt_processing_progress")(message.get("progress", 0.0))
             elif message_type == "success":
                 nonlocal finished
                 finished = True
@@ -201,23 +201,27 @@ class LLMDynamicHandle(DynamicHandle):
 
         config["stopStrings"] = []
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
-        prediction_layers.append({"layerName": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)})
-        prediction_layers.append({
-            "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
-            "config": convert_dict_to_kv_config(
-                {
-                    "promptTemplate": {
-                        "type": "jinja",
-                        "jinjaPromptTemplate": {
-                            "bosToken": "",
-                            "eosToken": "",
-                            "template": "{% for message in messages %}{{ message['content'] }}{% endfor %}",
-                        },
-                        "stopStrings": [],
+        prediction_layers.append(
+            {"layerName": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
+        )
+        prediction_layers.append(
+            {
+                "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+                "config": convert_dict_to_kv_config(
+                    {
+                        "promptTemplate": {
+                            "type": "jinja",
+                            "jinjaPromptTemplate": {
+                                "bosToken": "",
+                                "eosToken": "",
+                                "template": "{% for message in messages %}{{ message['content'] }}{% endfor %}",
+                            },
+                            "stopStrings": [],
+                        }
                     }
-                }
-            ),
-        })
+                ),
+            }
+        )
 
         # TODO un-async me
         await self.__predict_internal(
@@ -309,7 +313,9 @@ class LLMDynamicHandle(DynamicHandle):
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
-        api_override_layer = KVConfigStackLayer(layerName=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config))
+        api_override_layer = KVConfigStackLayer(
+            layerName=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
+        )
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
 
@@ -332,7 +338,6 @@ class LLMDynamicHandle(DynamicHandle):
         context_length = find_key_in_kv_config(await self.get_load_config(), "contextLength")
         return context_length if context_length else -1
 
-    # TODO: should these be get or something else?
     async def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:

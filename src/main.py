@@ -13,17 +13,13 @@ async def main():
 
         # result = await llm_client.getLoadConfig(model_path)
         model = await llm_client.llm.unstable_get_any()
-        # TODO unasyncify this
+        # TODO syncify this so we can await directly on model.respond
         result = await model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
         trueResult = await result
         # async for completion in result:
         #     print(completion)
-        # TODO result does not properly close
-        print(type(result))
-        print(type(trueResult))
-        print(trueResult)
         # result = await llm_client.load_model(model_path)
-        print("Model loaded:", result)
+        print("Model loaded:", trueResult)
 
         # async for completion in llm_client.predict(model_path):
         #    print(completion)

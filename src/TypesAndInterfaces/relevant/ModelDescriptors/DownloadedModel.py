@@ -1,5 +1,4 @@
-from typing import Literal, NotRequired
-from typing_extensions import TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 
 class DownloadedModel(TypedDict):

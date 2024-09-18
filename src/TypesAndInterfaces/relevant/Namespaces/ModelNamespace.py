@@ -15,7 +15,6 @@ from TypesAndInterfaces.relevant.CallOptions.LLMLoadModelConfig import LLMLoadMo
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDomainType import ModelDomainType
 from TypesAndInterfaces.relevant.Defaults.ClientPort import ClientPort
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelSpecifier import ModelSpecifier
-from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMLlamaAccelerationSetting import LLMLlamaAccelerationSetting
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig, convert_dict_to_kv_config
 
 # Type variables for generic types
@@ -120,7 +119,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             promise.set_exception(error)
 
         async def handle_message(message):
-            message_type = message.get("type")
+            message_type = message.get("type", "")
             if message_type == "resolved":
                 nonlocal full_path
                 full_path = message.get("fullPath")
@@ -139,7 +138,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             elif message_type == "progress":
                 progress = message.get("progress")
                 if opts and "on_progress" in opts:
-                    opts["on_progress"](progress)
+                    opts.get("on_progress")(progress)
             elif message_type == "error":
                 reject(Exception(message.get("message", "Unknown error")))
 
@@ -334,9 +333,7 @@ class EmbeddingNamespace(
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(
-        self, port: ClientPort, specifier: ModelSpecifier
-    ) -> EmbeddingDynamicHandle:
+    def create_domain_dynamic_handle(self, port: ClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
@@ -363,9 +360,10 @@ class LLMNamespace(ModelNamespace[ClientPort, LLMLoadModelConfig, LLMDynamicHand
             if isinstance(gpu_offload, float):
                 fields["llama.acceleration.offloadRatio"] = gpu_offload
             else:
-                fields["llama.acceleration.offloadRatio"]: gpu_offload.get("ratio"),
-                fields["llama.acceleration.mainGpu"]: gpu_offload.get("mainGpu"),
-                fields["llama.acceleration.tensorSplit"]: gpu_offload.get("tensorSplit"),
+                assert not isinstance(gpu_offload, int) and gpu_offload is not None
+                fields["llama.acceleration.offloadRatio"] = gpu_offload.get("ratio")
+                fields["llama.acceleration.mainGpu"] = gpu_offload.get("mainGpu")
+                fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensorSplit")
         return convert_dict_to_kv_config(fields)
 
     def create_domain_specific_model(

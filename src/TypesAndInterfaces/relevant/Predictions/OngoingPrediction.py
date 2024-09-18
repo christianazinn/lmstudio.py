@@ -69,7 +69,6 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
             load_model_config: KVConfig,
             prediction_config: KVConfig,
         ) -> None:
-            print("hi")
             ongoing_prediction._stats = stats
             ongoing_prediction._model_info = model_info
             ongoing_prediction._load_model_config = load_model_config

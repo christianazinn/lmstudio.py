@@ -1,5 +1,4 @@
-from typing import List, Union, Literal
-from typing_extensions import TypedDict
+from typing import List, Union, Literal, TypedDict
 
 LLMLlamaAccelerationOffloadRatio = Union[float, Literal["max", "off"]]
 """

@@ -1,5 +1,4 @@
-from typing import List, Union, Literal
-from typing_extensions import TypedDict
+from typing import List, Union, Literal, TypedDict
 
 LLMChatHistoryMessageContent = List["LLMChatHistoryMessageContentPart"]
 """Represents the content of a message in the history."""

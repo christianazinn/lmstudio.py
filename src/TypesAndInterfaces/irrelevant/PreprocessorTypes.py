@@ -1,6 +1,5 @@
-from typing import List, Literal, Union
+from typing import List, Literal, Union, TypedDict
 from abc import ABC, abstractmethod
-from typing_extensions import TypedDict
 
 
 class PredictionStepController(TypedDict):

@@ -1,5 +1,4 @@
-from typing import Literal, Callable
-from typing_extensions import TypedDict
+from typing import Literal, Callable, TypedDict
 
 
 class DiagnosticsLogEventData(TypedDict):

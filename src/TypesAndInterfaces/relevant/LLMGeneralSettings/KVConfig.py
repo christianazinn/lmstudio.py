@@ -1,5 +1,4 @@
-from typing import List, Any
-from typing_extensions import TypedDict
+from typing import List, Any, TypedDict
 from enum import Enum
 
 

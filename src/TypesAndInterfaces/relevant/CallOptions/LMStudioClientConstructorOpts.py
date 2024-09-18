@@ -1,5 +1,4 @@
-from typing import NotRequired, Protocol, Any
-from typing_extensions import TypedDict
+from typing import NotRequired, Protocol, Any, TypedDict
 
 
 class LoggerInterface(Protocol):

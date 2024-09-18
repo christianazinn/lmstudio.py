@@ -1,4 +1,4 @@
-from typing_extensions import TypedDict
+from typing import TypedDict
 from TypesAndInterfaces.relevant.Predictions.LLMPredictionStats import LLMPredictionStats
 from TypesAndInterfaces.relevant.ModelDescriptors.ModelDescriptor import ModelDescriptor
 from TypesAndInterfaces.relevant.LLMGeneralSettings.KVConfig import KVConfig

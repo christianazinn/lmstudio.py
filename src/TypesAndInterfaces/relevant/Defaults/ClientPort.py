@@ -70,34 +70,39 @@ class ClientPort:
                 assert self.websocket is not None
                 message = await self.websocket.recv()
                 data = json.loads(message)
+                # FIXMEe debug
                 print("Message received: ", data)
 
                 # TODO: more robust data handling
-                # TODO: .get()
-                if "type" in data:
-                    # channel endpoints
-                    if data["type"] == "channelSend":
-                        channel_id = data["channelId"]
-                        if channel_id in self.channel_handlers:
-                            await self.channel_handlers[channel_id](data["message"])
-                    elif data["type"] == "channelClose":
-                        channel_id = data["channelId"]
-                        if channel_id in self.channel_handlers:
-                            del self.channel_handlers[channel_id]
-                    elif data["type"] == "channelError":
-                        channel_id = data["channelId"]
-                        if channel_id in self.channel_handlers:
-                            await self.channel_handlers[channel_id](data["error"])
-                            del self.channel_handlers[channel_id]
+                data_type = data.get("type", None)
+                if data_type is None:
+                    continue
 
-                    # RPC endpoints
-                    # TODO currently we handle errors two semantic levels up whereas it should be one
-                    # implement error handling with the same semantics as channels
-                    elif data["type"] == "rpcResult" or data["type"] == "rpcError":
-                        call_id = data["callId"]
-                        if call_id in self.rpc_handlers:
-                            await self.rpc_handlers[call_id](data)
-                            del self.rpc_handlers[call_id]
+                # channel endpoints
+                # TODO: error handling
+                if data_type == "channelSend":
+                    channel_id = data.get("channelId")
+                    if channel_id in self.channel_handlers:
+                        await self.channel_handlers[channel_id](data.get("message", {}))
+                elif data_type == "channelClose":
+                    channel_id = data.get("channelId")
+                    if channel_id in self.channel_handlers:
+                        del self.channel_handlers[channel_id]
+                elif data_type == "channelError":
+                    channel_id = data.get("channelId")
+                    if channel_id in self.channel_handlers:
+                        await self.channel_handlers[channel_id](data.get("error", {}))
+                        del self.channel_handlers[channel_id]
+
+                # RPC endpoints
+                # TODO currently we handle errors two semantic levels up whereas it should be one
+                # implement error handling with the same semantics as channels
+                elif data_type == "rpcResult" or data_type == "rpcError":
+                    call_id = data.get("callId", -1)
+                    # TODO we should pass only the error dict
+                    if call_id in self.rpc_handlers:
+                        await self.rpc_handlers[call_id](data)
+                        del self.rpc_handlers[call_id]
         except AssertionError:
             print("WebSocket connection not established in receive_messages: this should never happen?")
         except websockets.ConnectionClosedOK:
@@ -107,10 +112,14 @@ class ClientPort:
         finally:
             self.running = False
 
+    async def send_payload(self, payload: dict):
+        assert self.websocket is not None
+        await self.websocket.send(json.dumps(payload))
+
     # TODO: endpoint enum
     # TODO: ensure handler is async
-    # TODO: un-async everything!
-    async def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
+    # TODO: thread safety
+    def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
         assert self.websocket is not None
         channel_id = self.get_next_channel_id()
         payload = {
@@ -121,21 +130,22 @@ class ClientPort:
         if creation_parameter is not None:
             payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
-        await self.websocket.send(json.dumps(payload))
+
+        asyncio.run(self.send_payload(payload))
         return channel_id
 
-    async def send_channel_message(self, channel_id: int, payload: dict):
+    def send_channel_message(self, channel_id: int, payload: dict):
         assert self.websocket is not None
         payload["channelId"] = channel_id
-        await self.websocket.send(json.dumps(payload))
+        asyncio.run(self.send_payload(payload))
 
     # TODO type hint for return type
-    async def call_rpc(self, endpoint: str, parameter: Any | None):
+    def call_rpc(self, endpoint: str, parameter: Any | None):
         assert self.websocket is not None
 
-        # TODO make sure this works!
         # TODO parameter validation
-        complete = asyncio.Event()
+        # TODO asyncio.Event is async, threading.Event is sync: do we want synchronous op?
+        complete = threading.Event()
         result = {}
 
         async def rpc_handler(data):
@@ -153,8 +163,13 @@ class ClientPort:
             payload["parameter"] = parameter
         self.rpc_handlers[call_id] = rpc_handler
 
-        await self.websocket.send(json.dumps(payload))
-        await complete.wait()
+        # TODO run or something else?
+        # TODO error handling
+        asyncio.run(self.send_payload(payload))
+
+        # synchronous blocking: good?
+        complete.wait()
+
         if "error" in result:
             raise Exception(result["error"])
         assert "result" in result

@@ -1,5 +1,4 @@
-from typing_extensions import TypedDict
-from typing import Union, TypeVar, Callable, NotRequired, Generic
+from typing import Union, TypeVar, Callable, NotRequired, Generic, TypedDict
 from enum import Enum
 from TypesAndInterfaces.relevant.Defaults.AbortSignal import AbortSignal
 

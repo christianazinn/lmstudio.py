@@ -1,5 +1,4 @@
-from typing import NotRequired, Union
-from typing_extensions import TypedDict
+from typing import NotRequired, Union, TypedDict
 from TypesAndInterfaces.relevant.LLMGeneralSettings.LLMLlamaAccelerationSetting import LLMLlamaAccelerationSetting
 
 
