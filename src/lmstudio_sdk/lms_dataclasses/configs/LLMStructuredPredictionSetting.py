@@ -18,7 +18,7 @@ Only generate valid JSON:
 
 ```python
 prediction = model.complete("...", {
-    "maxPredictedTokens": 100,
+    "max_predicted_tokens": 100,
     "structured": {"type": "json"},
 })
 ```
@@ -36,7 +36,7 @@ schema = {
     "required": ["name", "age"],
 }
 prediction = model.complete("...", {
-    "maxPredictedTokens": 100,
+    "max_predicted_tokens": 100,
     "structured": {"type": "json", "jsonSchema": schema},
 })
 ```
@@ -53,5 +53,5 @@ Caveats:
 - In certain cases, the model may get stuck. For example, when forcing it to generate valid JSON,
   it may generate an opening brace `{` but never generate a closing brace `}`. In such cases, the
   prediction will go on forever until the context length is reached, which can take a long time.
-  Therefore, it is recommended to always set a `maxPredictedTokens` limit.
+  Therefore, it is recommended to always set a `max_predicted_tokens` limit.
 """

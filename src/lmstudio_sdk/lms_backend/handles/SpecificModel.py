@@ -22,7 +22,7 @@ class EmbeddingSpecificModel(EmbeddingDynamicHandle, SpecificModel):
         assert isinstance(port, ClientPort)
         assert isinstance(instance_reference, str)
         EmbeddingDynamicHandle.__init__(
-            self, port, {"type": "instanceReference", "instanceReference": instance_reference}
+            self, port, {"type": "instanceReference", "instance_reference": instance_reference}
         )
         self.identifier = descriptor["identifier"]
         self.path = descriptor["path"]
@@ -39,6 +39,6 @@ class LLMSpecificModel(LLMDynamicHandle, SpecificModel):
     def __init__(self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor):
         assert isinstance(port, ClientPort)
         assert isinstance(instance_reference, str)
-        super().__init__(port=port, specifier={"type": "instanceReference", "instanceReference": instance_reference})
+        super().__init__(port=port, specifier={"type": "instanceReference", "instance_reference": instance_reference})
         self.identifier = descriptor["identifier"]
         self.path = descriptor["path"]

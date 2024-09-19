@@ -136,7 +136,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 resolve(
                     self.create_domain_specific_model(
                         self.__port,
-                        message.get("instanceReference"),
+                        message.get("instance_reference"),
                         {"identifier": message.get("identifier"), "path": path},
                     )
                 )
@@ -157,7 +157,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 "loadConfigStack": {
                     "layers": [
                         {
-                            "layerName": "apiOverride",
+                            "layer_name": "apiOverride",
                             "config": self.load_config_to_kv_config(
                                 opts["config"] if opts and "config" in opts else self._default_load_config
                             ),
@@ -293,7 +293,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :alpha:
         """
         return self.create_domain_dynamic_handle(
-            self.__port, {"type": "instanceReference", "instanceReference": instance_reference}
+            self.__port, {"type": "instanceReference", "instance_reference": instance_reference}
         )
 
     async def unstable_get_or_load(
@@ -322,14 +322,14 @@ class EmbeddingNamespace(
     def load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
         return convert_dict_to_kv_config(
             {
-                "llama.acceleration.offloadRatio": config.get("gpuOffload", {}).get("ratio"),
-                "llama.acceleration.mainGpu": config.get("gpuOffload", {}).get("mainGpu"),
-                "llama.acceleration.tensorSplit": config.get("gpuOffload", {}).get("tensorSplit"),
-                "contextLength": config.get("contextLength"),
-                "llama.ropeFrequencyBase": config.get("ropeFrequencyBase"),
-                "llama.ropeFrequencyScale": config.get("ropeFrequencyScale"),
-                "llama.keepModelInMemory": config.get("keepModelInMemory"),
-                "llama.tryMmap": config.get("tryMmap"),
+                "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
+                "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
+                "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
+                "contextLength": config.get("context_length"),
+                "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
+                "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
+                "llama.keepModelInMemory": config.get("keep_model_in_memory"),
+                "llama.tryMmap": config.get("try_mmap"),
             }
         )
 
@@ -349,26 +349,26 @@ class LLMNamespace(ModelNamespace[ClientPort, LLMLoadModelConfig, LLMDynamicHand
     def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
         # why is this implemented like this???
         fields = {
-            "contextLength": config.get("contextLength"),
-            "llama.evalBatchSize": config.get("evalBatchSize"),
-            "llama.flashAttention": config.get("flashAttention"),
-            "llama.ropeFrequencyBase": config.get("ropeFrequencyBase"),
-            "llama.ropeFrequencyScale": config.get("ropeFrequencyScale"),
-            "llama.keepModelInMemory": config.get("keepModelInMemory"),
+            "contextLength": config.get("context_length"),
+            "llama.evalBatchSize": config.get("eval_batch_size"),
+            "llama.flashAttention": config.get("flash_attention"),
+            "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
+            "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
+            "llama.keepModelInMemory": config.get("keep_model_in_memory"),
             "seed": config.get("seed"),
-            "llama.useFp16ForKVCache": config.get("useFp16ForKVCache"),
-            "llama.tryMmap": config.get("tryMmap"),
-            "numExperts": config.get("numExperts"),
+            "llama.useFp16ForKVCache": config.get("use_fp16_for_kv_cache"),
+            "llama.tryMmap": config.get("try_mmap"),
+            "numExperts": config.get("num_experts"),
         }
-        if "gpuOffload" in config:
-            gpu_offload = config.get("gpuOffload")
+        if "gpu_offload" in config:
+            gpu_offload = config.get("gpu_offload")
             if isinstance(gpu_offload, float):
                 fields["llama.acceleration.offloadRatio"] = gpu_offload
             else:
                 assert not isinstance(gpu_offload, int) and gpu_offload is not None
                 fields["llama.acceleration.offloadRatio"] = gpu_offload.get("ratio")
-                fields["llama.acceleration.mainGpu"] = gpu_offload.get("mainGpu")
-                fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensorSplit")
+                fields["llama.acceleration.mainGpu"] = gpu_offload.get("main_gpu")
+                fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensor_split")
         return convert_dict_to_kv_config(fields)
 
     def create_domain_specific_model(

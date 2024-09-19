@@ -38,30 +38,30 @@ def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig | None
     fields = []
     if prediction_config is not None:
         # HACK i hate this
-        for default_key in ["temperature", "contextOverflowPolicy", "stopStrings", "structured", "topKSampling"]:
+        for default_key in ["temperature", "context_overflow_policy", "stop_strings", "structured", "top_k_sampling"]:
             if default_key in prediction_config:
                 fields.append({"key": default_key, "value": prediction_config[default_key]})
-        if "maxPredictedTokens" in prediction_config:
+        if "max_predicted_tokens" in prediction_config:
             fields.append(
                 {
-                    "key": "maxPredictedTokens",
-                    "value": number_to_checkbox_numeric(prediction_config["maxPredictedTokens"], -1, 1),
+                    "key": "max_predicted_tokens",
+                    "value": number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
                 }
             )
-        if "repeatPenalty" in prediction_config:
+        if "repeat_penalty" in prediction_config:
             fields.append(
-                {"key": "repeatPenalty", "value": number_to_checkbox_numeric(prediction_config["repeatPenalty"], 1, 1)}
+                {"key": "repeat_penalty", "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1)}
             )
-        if "minPSampling" in prediction_config:
+        if "min_p_sampling" in prediction_config:
             fields.append(
-                {"key": "minPSampling", "value": number_to_checkbox_numeric(prediction_config["minPSampling"], 0, 0.05)}
+                {"key": "min_p_sampling", "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05)}
             )
-        if "topPSampling" in prediction_config:
+        if "top_p_sampling" in prediction_config:
             fields.append(
-                {"key": "topPSampling", "value": number_to_checkbox_numeric(prediction_config["topPSampling"], 1, 0.95)}
+                {"key": "top_p_sampling", "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95)}
             )
-        if "cpuThreads" in prediction_config:
-            fields.append({"key": "llama.cpuThreads", "value": prediction_config["cpuThreads"]})
+        if "cpu_threads" in prediction_config:
+            fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
     return {"fields": fields}
 
 
@@ -195,14 +195,14 @@ class LLMDynamicHandle(DynamicHandle):
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
-        config["stopStrings"] = []
+        config["stop_strings"] = []
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            {"layerName": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
+            {"layer_name": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
         )
         prediction_layers.append(
             {
-                "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+                "layer_name": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
                 "config": convert_dict_to_kv_config(
                     {
                         "promptTemplate": {
@@ -212,7 +212,7 @@ class LLMDynamicHandle(DynamicHandle):
                                 "eosToken": "",
                                 "template": "{% for message in messages %}{{ message['content'] }}{% endfor %}",
                             },
-                            "stopStrings": [],
+                            "stop_strings": [],
                         }
                     }
                 ),
@@ -307,7 +307,7 @@ class LLMDynamicHandle(DynamicHandle):
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         api_override_layer = KVConfigStackLayer(
-            layerName=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
+            layer_name=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
         )
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)

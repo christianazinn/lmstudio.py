@@ -19,13 +19,13 @@ class LLMPredictionConfig(TypedDict):
     Shared config for running predictions on an LLM.
     """
 
-    maxPredictedTokens: NotRequired[int]
+    max_predicted_tokens: NotRequired[int]
     """
     Number of tokens to predict at most. If set to -1, the model will predict as many tokens as it
     wants.
 
     When the prediction is stopped because of this limit, the `stopReason` in the prediction stats
-    will be set to `maxPredictedTokensReached`.
+    will be set to `max_predicted_tokensReached`.
 
     See `LLMPredictionStopReason` for other reasons that a prediction might stop.
     """
@@ -37,7 +37,7 @@ class LLMPredictionConfig(TypedDict):
     between 0 and 1.
     """
 
-    stopStrings: NotRequired[List[str]]
+    stop_strings: NotRequired[List[str]]
     """
     An array of strings. If the model generates one of these strings, the prediction will stop.
 
@@ -47,7 +47,7 @@ class LLMPredictionConfig(TypedDict):
     See `LLMPredictionStopReason` for other reasons that a prediction might stop.
     """
 
-    contextOverflowPolicy: NotRequired[LLMContextOverflowPolicy]
+    context_overflow_policy: NotRequired[LLMContextOverflowPolicy]
     """
     The behavior for when the generated tokens length exceeds the context window size. The allowed
     values are:
@@ -60,11 +60,11 @@ class LLMPredictionConfig(TypedDict):
     """
 
     structured: NotRequired[LLMStructuredPredictionSetting]
-    topKSampling: NotRequired[int]
-    repeatPenalty: NotRequired[float]
-    minPSampling: NotRequired[float]
-    topPSampling: NotRequired[float]
-    cpuThreads: NotRequired[int]
+    top_k_sampling: NotRequired[int]
+    repeat_penalty: NotRequired[float]
+    min_p_sampling: NotRequired[float]
+    top_p_sampling: NotRequired[float]
+    cpu_threads: NotRequired[int]
 
 
 class LLMPredictionExtraOpts(TypedDict):

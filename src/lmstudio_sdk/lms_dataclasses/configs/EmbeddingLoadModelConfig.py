@@ -7,32 +7,32 @@ class EmbeddingLoadModelConfig(TypedDict):
     Configuration for loading an embedding model.
     """
 
-    gpuOffload: NotRequired[LLMLlamaAccelerationSetting]
+    gpu_offload: NotRequired[LLMLlamaAccelerationSetting]
     """
     GPU offload settings for the model.
     """
 
-    contextLength: NotRequired[int]
+    context_length: NotRequired[int]
     """
     The context length to use for the model.
     """
 
-    ropeFrequencyBase: NotRequired[float]
+    rope_frequency_base: NotRequired[float]
     """
     The base frequency for RoPE (Rotary Positional Embedding).
     """
 
-    ropeFrequencyScale: NotRequired[float]
+    rope_frequency_scale: NotRequired[float]
     """
     The frequency scale for RoPE (Rotary Positional Embedding).
     """
 
-    keepModelInMemory: NotRequired[bool]
+    keep_model_in_memory: NotRequired[bool]
     """
     Whether to keep the model in memory.
     """
 
-    tryMmap: NotRequired[bool]
+    try_mmap: NotRequired[bool]
     """
     Whether to try memory-mapping the model.
     """

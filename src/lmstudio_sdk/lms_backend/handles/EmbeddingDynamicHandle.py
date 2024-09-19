@@ -32,7 +32,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
 
         :return: The context length as an integer.
         """
-        context_length = find_key_in_kv_config(self.get_load_config(), "contextLength")
+        context_length = find_key_in_kv_config(self.get_load_config(), "context_length")
         return context_length if context_length is not None else -1
 
     async def unstable_get_eval_batch_size(self) -> int:

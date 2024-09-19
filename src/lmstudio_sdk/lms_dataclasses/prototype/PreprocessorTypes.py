@@ -9,7 +9,7 @@ class PredictionStepController(TypedDict):
 class ProcessorInputFile(TypedDict):
     identifier: str
     type: "ProcessorInputFileType"
-    sizeBytes: int
+    size_bytes: int
 
 
 ProcessorInputFileType = Literal["image", "text/plain", "text/other", "application/pdf", "application/word", "unknown"]

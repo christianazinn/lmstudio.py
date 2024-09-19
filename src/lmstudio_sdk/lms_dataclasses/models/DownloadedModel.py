@@ -16,7 +16,7 @@ class DownloadedModel(TypedDict):
     The path of the model. Use to load the model.
     """
 
-    sizeBytes: int
+    size_bytes: int
     """
     The size of the model in bytes.
     """

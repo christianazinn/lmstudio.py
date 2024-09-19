@@ -24,12 +24,12 @@ class LLMLlamaAccelerationSetting(TypedDict):
     The offload ratio for GPU acceleration.
     """
 
-    mainGpu: int
+    main_gpu: int
     """
     The index of the main GPU to use.
     """
 
-    tensorSplit: List[float]
+    tensor_split: List[float]
     """
     The tensor split configuration for multi-GPU setups.
     """
@@ -40,33 +40,33 @@ class LLMLoadModelConfig(TypedDict):
     Configuration for loading an LLM model.
     """
 
-    gpuOffload: NotRequired[Union[LLMLlamaAccelerationSetting, float]]
+    gpu_offload: NotRequired[Union[LLMLlamaAccelerationSetting, float]]
     """
     How much of the model's work should be offloaded to the GPU. The value should be between 0 and 1.
     A value of 0 means that no layers are offloaded to the GPU, while a value of 1 means that all
     layers (that can be offloaded) are offloaded to the GPU.
     """
 
-    contextLength: NotRequired[int]
+    context_length: NotRequired[int]
     """
     The size of the context length in number of tokens. This will include both the prompts and the
     responses. Once the context length is exceeded, the value set in
-    LLMPredictionConfigBase.contextOverflowPolicy is used to determine the behavior.
+    LLMPredictionConfigBase.context_overflow_policy is used to determine the behavior.
 
     See LLMContextOverflowPolicy for more information.
     """
 
-    ropeFrequencyBase: NotRequired[float]
-    ropeFrequencyScale: NotRequired[float]
+    rope_frequency_base: NotRequired[float]
+    rope_frequency_scale: NotRequired[float]
 
-    evalBatchSize: NotRequired[int]
+    eval_batch_size: NotRequired[int]
     """
     Prompt evaluation batch size.
     """
 
-    flashAttention: NotRequired[bool]
-    keepModelInMemory: NotRequired[bool]
+    flash_attention: NotRequired[bool]
+    keep_model_in_memory: NotRequired[bool]
     seed: NotRequired[int]
-    useFp16ForKVCache: NotRequired[bool]
-    tryMmap: NotRequired[bool]
-    numExperts: NotRequired[int]
+    use_fp16_for_kv_cache: NotRequired[bool]
+    try_mmap: NotRequired[bool]
+    num_experts: NotRequired[int]

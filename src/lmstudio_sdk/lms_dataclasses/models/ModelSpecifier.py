@@ -9,7 +9,7 @@ class QueryModel(TypedDict):
 
 class InstanceReferenceModel(TypedDict):
     type: Literal["instanceReference"]
-    instanceReference: str
+    instance_reference: str
 
 
 ModelSpecifier = Union[QueryModel, InstanceReferenceModel]
