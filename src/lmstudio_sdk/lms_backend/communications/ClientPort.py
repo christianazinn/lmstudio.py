@@ -71,8 +71,8 @@ class ClientPort:
                 assert self.websocket is not None
                 message = await self.websocket.recv()
                 data = json.loads(message)
-                # FIXMEe debug
-                print("Message received: ", data)
+                # FIXME debug
+                # print("Message received: ", data)
 
                 # TODO: more robust data handling
                 data_type = data.get("type", None)
@@ -117,15 +117,10 @@ class ClientPort:
         assert self.websocket is not None
         await self.websocket.send(json.dumps(payload))
 
-    def __send_payload_threadsafe(self, payload: dict, complete: threading.Event | None = None):
+    def __send_payload_threadsafe(self, payload: dict):
         with ThreadPoolExecutor() as executor:
             future = executor.submit(asyncio.run_coroutine_threadsafe, self.__send_payload(payload), asyncio.get_event_loop())
-            print("waiting future")
             future.result()
-            print("done waiting future")
-            if complete:
-                print("waiting complete")
-                complete.wait()
 
     # TODO: endpoint enum
     # TODO: ensure handler is async

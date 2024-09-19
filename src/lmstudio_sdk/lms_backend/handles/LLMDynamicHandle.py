@@ -104,7 +104,6 @@ class LLMDynamicHandle(DynamicHandle):
 
         async def handle_fragments(message: dict):
             message_type = message.get("type", "")
-            print(message_type)
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
                 if "on_first_token" in extraOpts:
@@ -312,8 +311,6 @@ class LLMDynamicHandle(DynamicHandle):
         )
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
-
-        print("before predict internal")
 
         self.__predict_internal(
             self.specifier,

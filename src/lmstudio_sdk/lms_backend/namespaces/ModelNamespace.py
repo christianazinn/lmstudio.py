@@ -232,13 +232,11 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         if isinstance(query, str):
             query = {"identifier": query}
         query["domain"] = self._namespace
-        print("before rpc call")
         info = await self.__port.call_rpc(
             "getModelInfo", {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True}
         )
         if not info or info is None:
             raise Exception("Model not found")
-        print("info: ", info)
         return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor")) # type: ignore
 
     async def unstable_get_any(self) -> TSpecificModel:
