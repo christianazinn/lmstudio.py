@@ -12,12 +12,12 @@ async def main():
         # model_path = "qwen2"
 
         # result = await llm_client.getLoadConfig(model_path)
-        print(await llm_client.system.list_downloaded_models())
-        model = llm_client.llm.unstable_get_any()
+        model = await llm_client.llm.unstable_get_any()
         # TODO unasyncify this
-        result = await model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
-        # async for completion in result:
-        #     print(completion)
+        result = model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
+        async for completion in result:
+            print(type(completion))
+            print("frag", completion)
         # TODO result does not properly close
         print(type(result))
         # result = await llm_client.load_model(model_path)

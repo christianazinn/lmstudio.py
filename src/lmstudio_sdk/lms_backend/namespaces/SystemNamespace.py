@@ -20,4 +20,4 @@ class SystemNamespace:
         """
         List all the models that have been downloaded.
         """
-        return self.__port.call_rpc("listDownloadedModels", None)
+        return await self.__port.call_rpc("listDownloadedModels", None) # type: ignore

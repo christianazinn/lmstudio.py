@@ -337,7 +337,7 @@ class LLMDynamicHandle(DynamicHandle):
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
         return (
-            self.port.call_rpc(
+            await self.port.call_rpc(
                 "applyPromptTemplate",
                 {
                     "specifier": self.specifier,
@@ -349,11 +349,11 @@ class LLMDynamicHandle(DynamicHandle):
         ).get("formatted", "")
 
     async def unstable_tokenize(self, input_string: str) -> List[int]:
-        return (self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
+        return (await self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )
 
     async def unstable_count_tokens(self, input_string: str) -> int:
         return (
-            self.port.call_rpc("countTokens", {"specifier": self.specifier, "inputString": input_string})
+            await self.port.call_rpc("countTokens", {"specifier": self.specifier, "inputString": input_string})
         ).get("tokenCount", -1)

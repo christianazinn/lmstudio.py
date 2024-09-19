@@ -24,7 +24,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        return self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
+        return await self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
 
     async def unstable_get_context_length(self) -> int:
         """
@@ -52,6 +52,6 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :return: A list of integers representing the tokenized string.
         """
         assert isinstance(input_string, str)
-        return self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string}).get(
+        return (await self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )

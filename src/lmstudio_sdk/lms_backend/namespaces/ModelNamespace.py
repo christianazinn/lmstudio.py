@@ -180,7 +180,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
 
         return promise # type: ignore
 
-    def unload(self, identifier: str) -> None:
+    async def unload(self, identifier: str) -> None:
         """
         Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
         model afterwards, you will need to load it with {@link LLMNamespace#loadModel} again.
@@ -188,15 +188,15 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :param identifier: The identifier of the model to unload.
         """
         assert isinstance(identifier, str)
-        self.__port.call_rpc("unloadModel", {"identifier": identifier})
+        await self.__port.call_rpc("unloadModel", {"identifier": identifier})
 
-    def list_loaded(self) -> List[ModelDescriptor]:
+    async def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
-        return self.__port.call_rpc("listLoaded", None)
+        return await self.__port.call_rpc("listLoaded", None) # type: ignore
 
-    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
+    async def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -233,15 +233,16 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             query = {"identifier": query}
         query["domain"] = self._namespace
         print("before rpc call")
-        info = self.__port.call_rpc(
+        info = await self.__port.call_rpc(
             "getModelInfo", {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True}
         )
         if not info or info is None:
             raise Exception("Model not found")
-        return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor"))
+        print("info: ", info)
+        return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor")) # type: ignore
 
-    def unstable_get_any(self) -> TSpecificModel:
-        return self.get({})
+    async def unstable_get_any(self) -> TSpecificModel:
+        return await self.get({})
 
     def create_dynamic_handle(self, query: Union[ModelQuery, str]) -> TDynamicHandle:
         """
@@ -305,7 +306,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         parallel. Do not use in production yet.
         """
         try:
-            model = self.get({"identifier": identifier})
+            model = await self.get({"identifier": identifier})
             return model
         except Exception:
             if load_opts:

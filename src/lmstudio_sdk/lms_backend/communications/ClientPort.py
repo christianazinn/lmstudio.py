@@ -150,20 +150,17 @@ class ClientPort:
         self.__send_payload_threadsafe(payload)
 
     # TODO type hint for return type
-    def call_rpc(self, endpoint: str, parameter: Any | None):
+    # from experience: making this synchronous is more trouble than worth
+    async def call_rpc(self, endpoint: str, parameter: Any | None):
         assert self.websocket is not None
 
-        # TODO parameter validation
-        # TODO asyncio.Event is async, threading.Event is sync: do we want synchronous op?
-        complete = threading.Event()
+        complete = asyncio.Event()
         result = {}
 
         async def rpc_handler(data):
             nonlocal result
             result.update(data)
             complete.set()
-
-        print("before payload config")
 
         call_id = self.get_next_rpc_call_id()
         payload = {
@@ -175,17 +172,10 @@ class ClientPort:
             payload["parameter"] = parameter
         self.rpc_handlers[call_id] = rpc_handler
 
-        print("before send payload")
+        await self.websocket.send(json.dumps(payload))
+        await complete.wait()
+        # Send the payload asynchronously
 
-        # TODO run or something else?
-        # TODO error handling
-        self.__send_payload_threadsafe(payload, complete)
-
-        print("before wait")
-
-        if "error" in result:
-            raise Exception(result["error"])
-        assert "result" in result
-        return result["result"]
+        return result.get("result", result)
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort
