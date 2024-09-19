@@ -1,7 +1,6 @@
 import asyncio
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Any
 
 import websockets

@@ -12,7 +12,7 @@ from .configs import (
     LLMStructuredPredictionSetting,
     LMStudioClientConstructorOpts,
     LogLevel,
-    LoggerInterface
+    LoggerInterface,
 )
 from .llms import (
     convert_dict_to_kv_config,
@@ -35,8 +35,7 @@ from .llms import (
     LLMConversationContextInputItem,
     LLMPredictionStats,
     LLMPredictionStopReason,
-    OngoingPrediction,
-    PredictionResult
+    PredictionResult,
 )
 from .models import (
     DownloadedModel,
@@ -45,7 +44,7 @@ from .models import (
     ModelDomainType,
     ModelQuery,
     ModelSpecifier,
-    QueryModel
+    QueryModel,
 )
 
 __all__ = [
@@ -83,7 +82,6 @@ __all__ = [
     "LLMConversationContextInputItem",
     "LLMPredictionStats",
     "LLMPredictionStopReason",
-    "OngoingPrediction",
     "PredictionResult",
     "DownloadedModel",
     "InstanceReferenceModel",
@@ -91,5 +89,5 @@ __all__ = [
     "ModelDomainType",
     "ModelQuery",
     "ModelSpecifier",
-    "QueryModel"
+    "QueryModel",
 ]

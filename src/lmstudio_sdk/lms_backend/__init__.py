@@ -1,18 +1,13 @@
-from .communications import ClientPort
+from .communications import ClientPort, OngoingPrediction
 from .handles import (
     DynamicHandle,
     EmbeddingDynamicHandle,
     EmbeddingSpecificModel,
     LLMDynamicHandle,
     LLMSpecificModel,
-    SpecificModel
+    SpecificModel,
 )
-from .namespaces import (
-    DiagnosticsNamespace,
-    EmbeddingNamespace,
-    LLMNamespace,
-    SystemNamespace
-)
+from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
 
 __all__ = [
     "ClientPort",
@@ -24,6 +19,7 @@ __all__ = [
     "LLMDynamicHandle",
     "LLMNamespace",
     "LLMSpecificModel",
+    "OngoingPrediction",
     "SpecificModel",
-    "SystemNamespace"
+    "SystemNamespace",
 ]

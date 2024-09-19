@@ -3,10 +3,7 @@ from typing import List, Optional, Any, Callable, TypeVar, Generic, Iterator
 from queue import Queue
 from threading import Event
 from abc import ABC, abstractmethod
-from .KVConfig import KVConfig
-from .PredictionResult import PredictionResult
-from .LLMPredictionStats import LLMPredictionStats
-from ..models import ModelDescriptor
+from ...lms_dataclasses import KVConfig, LLMPredictionStats, ModelDescriptor, PredictionResult
 
 TFragment = TypeVar("TFragment")
 TFinal = TypeVar("TFinal")

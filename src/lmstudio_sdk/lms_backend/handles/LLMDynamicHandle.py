@@ -17,10 +17,10 @@ from ...lms_dataclasses import (
     LLMPredictionStats,
     ModelDescriptor,
     ModelSpecifier,
-    OngoingPrediction,
 )
 from ...typescript_ported import BufferedEvent
 from .DynamicHandle import DynamicHandle
+from ..communications import OngoingPrediction
 
 
 def number_to_checkbox_numeric(

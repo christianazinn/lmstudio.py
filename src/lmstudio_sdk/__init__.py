@@ -8,8 +8,9 @@ from .lms_backend import (
     LLMDynamicHandle,
     LLMNamespace,
     LLMSpecificModel,
+    OngoingPrediction,
     SpecificModel,
-    SystemNamespace
+    SystemNamespace,
 )
 from .lms_dataclasses import (
     BaseLoadModelOpts,
@@ -52,12 +53,11 @@ from .lms_dataclasses import (
     ModelDomainType,
     ModelQuery,
     ModelSpecifier,
-    OngoingPrediction,
     PredictionResult,
-    QueryModel
+    QueryModel,
 )
 from .LMStudioClient import LMStudioClient
-from .typescript_ported import AbortSignal, BufferedEvent, StreamablePromise
+from .typescript_ported import AbortSignal, BufferedEvent
 
 __all__ = [
     "AbortSignal",
@@ -116,6 +116,5 @@ __all__ = [
     "PredictionResult",
     "QueryModel",
     "SpecificModel",
-    "StreamablePromise",
-    "SystemNamespace"
+    "SystemNamespace",
 ]

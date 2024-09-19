@@ -9,7 +9,7 @@ from .LLMChatHistory import (
     LLMContext,
     LLMCompletionContextInput,
     LLMConversationContextInput,
-    LLMConversationContextInputItem
+    LLMConversationContextInputItem,
 )
 from .KVConfig import (
     convert_dict_to_kv_config,
@@ -18,10 +18,9 @@ from .KVConfig import (
     KVConfigField,
     KVConfigLayerName,
     KVConfigStack,
-    KVConfigStackLayer
+    KVConfigStackLayer,
 )
 from .LLMPredictionStats import LLMPredictionStopReason, LLMPredictionStats
-from .OngoingPrediction import OngoingPrediction
 from .PredictionResult import PredictionResult
 
 __all__ = [
@@ -45,6 +44,5 @@ __all__ = [
     "KVConfigStackLayer",
     "LLMPredictionStopReason",
     "LLMPredictionStats",
-    "OngoingPrediction",
-    "PredictionResult"
+    "PredictionResult",
 ]
