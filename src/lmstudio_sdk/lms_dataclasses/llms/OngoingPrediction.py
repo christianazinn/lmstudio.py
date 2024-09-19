@@ -1,37 +1,76 @@
 from __future__ import annotations
-from asyncio import Future
-from typing import Optional, Callable, List, Any
-from ...typescript_ported import StreamablePromise
-from ..models import ModelDescriptor
+from typing import Generic, TypeVar, List, Optional, Iterator, Any, Callable
+from queue import Queue
+from threading import Event
+from abc import ABC, abstractmethod
 from .KVConfig import KVConfig
-from .LLMPredictionStats import LLMPredictionStats
 from .PredictionResult import PredictionResult
+from .LLMPredictionStats import LLMPredictionStats
+from ..models import ModelDescriptor
+
+TFragment = TypeVar("TFragment")
+TFinal = TypeVar("TFinal")
+
+
+class StreamablePromise(Generic[TFragment, TFinal], ABC):
+    def __init__(self):
+        self.queue: Queue[Optional[TFragment]] = Queue()
+        self.final_result: Optional[TFinal] = None
+        self.error: Optional[Any] = None
+        self.status: str = "pending"
+        self.buffer: List[TFragment] = []
+        self.finished_event = Event()
+
+    @abstractmethod
+    def collect(self, fragments: List[TFragment]) -> TFinal:
+        pass
+
+    def push(self, fragment: TFragment) -> None:
+        if self.status != "pending":
+            return
+        self.buffer.append(fragment)
+        self.queue.put(fragment)
+
+    def finished(self, error: Optional[Any] = None) -> None:
+        if self.status != "pending":
+            return
+
+        if error:
+            self.status = "rejected"
+            self.error = error
+        else:
+            self.status = "resolved"
+            self._resolve()
+
+        self.queue.put(None)  # Signal end of stream
+        self.finished_event.set()
+
+    def _resolve(self):
+        try:
+            self.final_result = self.collect(self.buffer)
+        except Exception as e:
+            self.status = "rejected"
+            self.error = e
+
+    def __iter__(self) -> Iterator[TFragment]:
+        while True:
+            item = self.queue.get()
+            if item is None:
+                if self.status == "rejected":
+                    raise self.error
+                break
+            yield item
+
+    def result(self) -> TFinal:
+        self.finished_event.wait()
+        if self.status == "rejected":
+            raise self.error
+        if self.final_result is None:
+            raise ValueError("Result is not available")
+        return self.final_result
 
 
 class OngoingPrediction(StreamablePromise[str, PredictionResult]):
-    """
-    Represents an ongoing prediction.
-
-    This class is Promise-like, meaning you can use it as a promise. It resolves to a PredictionResult,
-    which contains the generated text in the `.content` property.
-
-    Example usage:
-
-    ```python
-    result = await model.complete("When will The Winds of Winter be released?")
-    print(result.content)
-    ```
-
-    You can also use instance methods like `then` and `catch` to handle the result or error of the prediction.
-
-    Alternatively, you can stream the result (process the results as more content is being generated):
-
-    ```python
-    async for fragment in model.complete("When will The Winds of Winter be released?"):
-        print(fragment, end='', flush=True)
-    ```
-    """
-
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel
@@ -40,7 +79,7 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
         self._load_model_config: Optional[KVConfig] = None
         self._prediction_config: Optional[KVConfig] = None
 
-    async def collect(self, fragments: List[str]) -> PredictionResult:
+    def collect(self, fragments: List[str]) -> PredictionResult:
         if self._stats is None:
             raise ValueError("Stats should not be None")
         if self._model_info is None:
@@ -83,34 +122,7 @@ class OngoingPrediction(StreamablePromise[str, PredictionResult]):
 
         return ongoing_prediction, finished, failed, push
 
-    def result(self) -> Future[PredictionResult]:
-        """
-        Get the final prediction results. If you have been streaming the results, awaiting on this
-        method will take no extra effort, as the results are already available in the internal buffer.
-
-        Example:
-
-        ```python
-        prediction = model.complete("When will The Winds of Winter be released?")
-        async for fragment in prediction:
-            print(fragment, end='', flush=True)
-        result = await prediction.result()
-        print(result.stats)
-        ```
-
-        Technically, awaiting on this method is the same as awaiting on the instance itself:
-
-        ```python
-        await prediction.result()
-
-        # Is the same as:
-
-        await prediction
-        ```
-        """
-        return self.promise_final
-
-    async def cancel(self) -> None:
+    def cancel(self) -> None:
         """
         Cancels the prediction. This will stop the prediction with stop reason `userStopped`.
         See LLMPredictionStopReason for other reasons that a prediction might stop.

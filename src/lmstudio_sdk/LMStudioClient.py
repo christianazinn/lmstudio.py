@@ -7,13 +7,7 @@ from base64 import b64encode
 from urllib.parse import urlparse
 from http.client import HTTPConnection
 
-from .lms_backend import (
-    ClientPort,
-    DiagnosticsNamespace,
-    EmbeddingNamespace,
-    LLMNamespace,
-    SystemNamespace
-)
+from .lms_backend import ClientPort, DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
 from .lms_dataclasses import LMStudioClientConstructorOpts
 
 
@@ -114,13 +108,6 @@ class LMStudioClient:
                 https://lmstudio.ai/docs/local-server
             """)
 
-    # python does not have async constructors so we do this
-    @classmethod
-    async def create(cls, opts: LMStudioClientConstructorOpts):
-        client = cls(opts)
-        await client.connect()
-        return client
-
     # ensure you connect and close properly!
     def __init__(self, opts: LMStudioClientConstructorOpts):
         self.client_identifier = opts.get("client_identifier", generate_random_base64(18))
@@ -128,11 +115,8 @@ class LMStudioClient:
         # TODO: guess base url is async???? fuck! figure out a better way to do this
         # for now logic is in connect()
         self.base_url = opts.get("base_url", None)
-
-    # TODO: somehow do these in parallel since it takes a while
-    async def connect(self):
-        if self.base_url is None:
-            self.base_url = await self.__guess_base_url()
+        # if self.base_url is None:
+        #    self.base_url = await self.__guess_base_url()
         self.__validate_base_url_or_throw(self.base_url)
 
         # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints
@@ -146,13 +130,13 @@ class LMStudioClient:
         self.system = SystemNamespace(system_port)
         self.diagnostics = DiagnosticsNamespace(diagnostics_port)
 
-        await self.llm.connect()
-        await self.embedding.connect()
-        await self.system.connect()
-        await self.diagnostics.connect()
+        self.llm.connect()
+        self.embedding.connect()
+        self.system.connect()
+        self.diagnostics.connect()
 
-    async def close(self):
-        await self.llm.close()
-        await self.embedding.close()
-        await self.system.close()
-        await self.diagnostics.close()
+    def close(self):
+        self.llm.close()
+        self.embedding.close()
+        self.system.close()
+        self.diagnostics.close()

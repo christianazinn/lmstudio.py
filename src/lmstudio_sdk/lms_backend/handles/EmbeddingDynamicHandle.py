@@ -17,16 +17,16 @@ class EmbeddingDynamicHandle(DynamicHandle):
     :public:
     """
 
-    async def embed_string(self, input_string: str) -> dict[str, List[float]]:
+    def embed_string(self, input_string: str) -> dict[str, List[float]]:
         """
         Embed a string into a vector representation.
 
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        return await self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
+        return self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
 
-    async def unstable_get_context_length(self) -> int:
+    def unstable_get_context_length(self) -> int:
         """
         Get the context length of the model.
 
@@ -35,7 +35,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         context_length = find_key_in_kv_config(self.get_load_config(), "context_length")
         return context_length if context_length is not None else -1
 
-    async def unstable_get_eval_batch_size(self) -> int:
+    def unstable_get_eval_batch_size(self) -> int:
         """
         Get the evaluation batch size of the model.
 
@@ -44,7 +44,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         batch_size = find_key_in_kv_config(self.get_load_config(), "embedding.load.llama.evalBatchSize")
         return batch_size if batch_size is not None else -1
 
-    async def unstable_tokenize(self, input_string: str) -> List[int]:
+    def unstable_tokenize(self, input_string: str) -> List[int]:
         """
         Tokenize the input string.
 
@@ -52,6 +52,6 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :return: A list of integers representing the tokenized string.
         """
         assert isinstance(input_string, str)
-        return (await self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
+        return (self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )

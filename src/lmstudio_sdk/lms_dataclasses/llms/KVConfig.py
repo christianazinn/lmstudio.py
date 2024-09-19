@@ -55,7 +55,7 @@ class KVConfigLayerName(str, Enum):
 
 
 class KVConfigStackLayer(TypedDict):
-    layer_name: KVConfigLayerName
+    layerName: KVConfigLayerName
     config: KVConfig
 
 

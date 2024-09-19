@@ -15,13 +15,13 @@ class DiagnosticsLogEvent(TypedDict):
 
 class DiagnosticsNamespace:
     def __init__(self, port):
-        self.__port = port  # Type not specified in TypeScript
+        self.__port = port
 
-    async def connect(self) -> None:
-        await self.__port.connect()
+    def connect(self) -> None:
+        self.__port.connect()
 
-    async def close(self) -> None:
-        await self.__port.close()
+    def close(self) -> None:
+        self.__port.close()
 
     # TODO make me work
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:

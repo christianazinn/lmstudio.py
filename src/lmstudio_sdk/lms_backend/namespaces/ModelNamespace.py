@@ -11,15 +11,9 @@ from ...lms_dataclasses import (
     ModelDomainType,
     ModelSpecifier,
     KVConfig,
-    convert_dict_to_kv_config
+    convert_dict_to_kv_config,
 )
-from ..handles import (
-    DynamicHandle,
-    EmbeddingDynamicHandle,
-    LLMDynamicHandle,
-    EmbeddingSpecificModel,
-    LLMSpecificModel
-)
+from ..handles import DynamicHandle, EmbeddingDynamicHandle, LLMDynamicHandle, EmbeddingSpecificModel, LLMSpecificModel
 from ..communications import ClientPort
 
 # Type variables for generic types
@@ -66,11 +60,11 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         """
         pass
 
-    async def connect(self) -> None:
-        await self.__port.connect()
+    def connect(self) -> None:
+        self.__port.connect()
 
-    async def close(self) -> None:
-        await self.__port.close()
+    def close(self) -> None:
+        self.__port.close()
 
     def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
@@ -123,7 +117,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         def reject(error):
             promise.set_exception(error)
 
-        async def handle_message(message):
+        def handle_message(message):
             message_type = message.get("type", "")
             if message_type == "resolved":
                 nonlocal full_path
@@ -136,7 +130,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 resolve(
                     self.create_domain_specific_model(
                         self.__port,
-                        message.get("instance_reference"),
+                        message.get("instanceReference"),
                         {"identifier": message.get("identifier"), "path": path},
                     )
                 )
@@ -157,7 +151,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 "loadConfigStack": {
                     "layers": [
                         {
-                            "layer_name": "apiOverride",
+                            "layerName": "apiOverride",
                             "config": self.load_config_to_kv_config(
                                 opts["config"] if opts and "config" in opts else self._default_load_config
                             ),
@@ -178,9 +172,9 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             if signal is not None:
                 signal.add_listener(on_cancel)
 
-        return promise # type: ignore
+        return promise  # type: ignore
 
-    async def unload(self, identifier: str) -> None:
+    def unload(self, identifier: str) -> None:
         """
         Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
         model afterwards, you will need to load it with {@link LLMNamespace#loadModel} again.
@@ -188,15 +182,15 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :param identifier: The identifier of the model to unload.
         """
         assert isinstance(identifier, str)
-        await self.__port.call_rpc("unloadModel", {"identifier": identifier})
+        self.__port.call_rpc("unloadModel", {"identifier": identifier})
 
-    async def list_loaded(self) -> List[ModelDescriptor]:
+    def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
-        return await self.__port.call_rpc("listLoaded", None) # type: ignore
+        return self.__port.call_rpc("listLoaded", None)  # type: ignore
 
-    async def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
+    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -232,15 +226,15 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         if isinstance(query, str):
             query = {"identifier": query}
         query["domain"] = self._namespace
-        info = await self.__port.call_rpc(
+        info = self.__port.call_rpc(
             "getModelInfo", {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True}
         )
         if not info or info is None:
             raise Exception("Model not found")
-        return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor")) # type: ignore
+        return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor"))  # type: ignore
 
-    async def unstable_get_any(self) -> TSpecificModel:
-        return await self.get({})
+    def unstable_get_any(self) -> TSpecificModel:
+        return self.get({})
 
     def create_dynamic_handle(self, query: Union[ModelQuery, str]) -> TDynamicHandle:
         """
@@ -293,10 +287,10 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :alpha:
         """
         return self.create_domain_dynamic_handle(
-            self.__port, {"type": "instanceReference", "instance_reference": instance_reference}
+            self.__port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
 
-    async def unstable_get_or_load(
+    def unstable_get_or_load(
         self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
     ) -> TSpecificModel:
         """
@@ -304,7 +298,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         parallel. Do not use in production yet.
         """
         try:
-            model = await self.get({"identifier": identifier})
+            model = self.get({"identifier": identifier})
             return model
         except Exception:
             if load_opts:

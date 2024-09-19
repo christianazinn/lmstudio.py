@@ -17,7 +17,7 @@ from ...lms_dataclasses import (
     LLMPredictionStats,
     ModelDescriptor,
     ModelSpecifier,
-    OngoingPrediction
+    OngoingPrediction,
 )
 from ...typescript_ported import BufferedEvent
 from .DynamicHandle import DynamicHandle
@@ -50,15 +50,24 @@ def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig | None
             )
         if "repeat_penalty" in prediction_config:
             fields.append(
-                {"key": "repeat_penalty", "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1)}
+                {
+                    "key": "repeat_penalty",
+                    "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
+                }
             )
         if "min_p_sampling" in prediction_config:
             fields.append(
-                {"key": "min_p_sampling", "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05)}
+                {
+                    "key": "min_p_sampling",
+                    "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
+                }
             )
         if "top_p_sampling" in prediction_config:
             fields.append(
-                {"key": "top_p_sampling", "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95)}
+                {
+                    "key": "top_p_sampling",
+                    "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
+                }
             )
         if "cpu_threads" in prediction_config:
             fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
@@ -102,7 +111,7 @@ class LLMDynamicHandle(DynamicHandle):
     ):
         finished = False
 
-        async def handle_fragments(message: dict):
+        def handle_fragments(message: dict):
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
@@ -198,11 +207,11 @@ class LLMDynamicHandle(DynamicHandle):
         config["stop_strings"] = []
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            {"layer_name": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
+            {"layerName": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
         )
         prediction_layers.append(
             {
-                "layer_name": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+                "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
                 "config": convert_dict_to_kv_config(
                     {
                         "promptTemplate": {
@@ -307,7 +316,7 @@ class LLMDynamicHandle(DynamicHandle):
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         api_override_layer = KVConfigStackLayer(
-            layer_name=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
+            layerName=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
         )
         prediction_layers = self.__internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
@@ -326,15 +335,15 @@ class LLMDynamicHandle(DynamicHandle):
         )
         return ongoing_prediction
 
-    async def unstable_get_context_length(self) -> int:
+    def unstable_get_context_length(self) -> int:
         context_length = find_key_in_kv_config(self.get_load_config(), "contextLength")
         return context_length if context_length else -1
 
-    async def unstable_apply_prompt_template(
+    def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
         return (
-            await self.port.call_rpc(
+            self.port.call_rpc(
                 "applyPromptTemplate",
                 {
                     "specifier": self.specifier,
@@ -345,12 +354,12 @@ class LLMDynamicHandle(DynamicHandle):
             )
         ).get("formatted", "")
 
-    async def unstable_tokenize(self, input_string: str) -> List[int]:
-        return (await self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
+    def unstable_tokenize(self, input_string: str) -> List[int]:
+        return (self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )
 
-    async def unstable_count_tokens(self, input_string: str) -> int:
-        return (
-            await self.port.call_rpc("countTokens", {"specifier": self.specifier, "inputString": input_string})
-        ).get("tokenCount", -1)
+    def unstable_count_tokens(self, input_string: str) -> int:
+        return (self.port.call_rpc("countTokens", {"specifier": self.specifier, "inputString": input_string})).get(
+            "tokenCount", -1
+        )

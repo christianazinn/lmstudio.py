@@ -39,7 +39,7 @@ class PromptPreprocessor(ABC):
         pass
 
     @abstractmethod
-    async def preprocess(self, ctl: PromptPreprocessController) -> Union[str, ProcessorInputMessage]:
+    def preprocess(self, ctl: PromptPreprocessController) -> Union[str, ProcessorInputMessage]:
         pass
 
 
