@@ -1,10 +1,7 @@
-import asyncio
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, Dict, Any
-
 import websocket
+from typing import Callable, Dict, Any
 
 
 auth_version = 1
@@ -77,11 +74,7 @@ class ClientPort:
                 self.rpc_handlers[call_id](data)
                 del self.rpc_handlers[call_id]
 
-    def on_error(
-        self,
-        ws,
-        error,
-    ):
+    def on_error(self, ws, error):
         # TODO I'm pretty sure this is a WebSocket error not a message error
         pass
 
@@ -136,9 +129,7 @@ class ClientPort:
     def is_connected(self) -> bool:
         return self._connection_event.is_set()
 
-        # TODO: endpoint enum
-
-    # TODO: ensure handler is async
+    # TODO: endpoint enum
     def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
         assert self._websocket is not None
         channel_id = self.get_next_channel_id()
@@ -160,7 +151,6 @@ class ClientPort:
         self._send_payload(payload)
 
     # TODO type hint for return type
-    # from experience: making this synchronous is more trouble than worth
     def call_rpc(self, endpoint: str, parameter: Any | None):
         assert self._websocket is not None
 

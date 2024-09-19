@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Generic, TypeVar, List, Optional, Iterator, Any, Callable
+from typing import List, Optional, Any, Callable, TypeVar, Generic, Iterator
 from queue import Queue
 from threading import Event
 from abc import ABC, abstractmethod
@@ -12,7 +12,7 @@ TFragment = TypeVar("TFragment")
 TFinal = TypeVar("TFinal")
 
 
-class StreamablePromise(Generic[TFragment, TFinal], ABC):
+class StreamableIterator(Generic[TFragment, TFinal], ABC):
     def __init__(self):
         self.queue: Queue[Optional[TFragment]] = Queue()
         self.final_result: Optional[TFinal] = None
@@ -70,7 +70,7 @@ class StreamablePromise(Generic[TFragment, TFinal], ABC):
         return self.final_result
 
 
-class OngoingPrediction(StreamablePromise[str, PredictionResult]):
+class OngoingPrediction(StreamableIterator[str, PredictionResult]):
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel

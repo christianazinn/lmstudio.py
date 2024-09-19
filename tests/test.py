@@ -1,5 +1,3 @@
-import asyncio
-
 from lmstudio_sdk.LMStudioClient import LMStudioClient
 
 
@@ -29,5 +27,18 @@ async def main():
         await llm_client.close()
 
 
+def syncmain():
+    llm_client = LMStudioClient({"base_url": "ws://localhost:1234"})
+    try:
+        model = llm_client.llm.unstable_get_any()
+        result = model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
+        print(result)
+        for completion in result:
+            print(type(completion))
+            print("frag", completion)
+    finally:
+        llm_client.close()
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    syncmain()

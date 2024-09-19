@@ -1,11 +1,11 @@
-import asyncio
 import json
 from secrets import token_bytes
 from base64 import b64encode
 
 
 from urllib.parse import urlparse
-from http.client import HTTPConnection
+from urllib.request import urlopen
+from urllib.error import URLError
 
 from .lms_backend import ClientPort, DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
 from .lms_dataclasses import LMStudioClientConstructorOpts
@@ -66,12 +66,10 @@ class LMStudioClient:
                     {base_url}
                 """)
 
-    async def __is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
-        def fetch():
-            conn = HTTPConnection("127.0.0.1", port)
-            try:
-                conn.request("GET", "lmstudio-greeting")
-                response = conn.getresponse()
+    def __is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
+        url = f"http://127.0.0.1:{port}/lmstudio-greeting"
+        try:
+            with urlopen(url, timeout=5) as response:
                 if response.status != 200:
                     raise ValueError("Status is not 200.")
 
@@ -81,32 +79,23 @@ class LMStudioClient:
                     raise ValueError("Not an LM Studio server.")
 
                 return port
-            finally:
-                conn.close()
-
-        try:
-            return await asyncio.to_thread(fetch)
-        except Exception as e:
+        except (URLError, ValueError) as e:
             raise ValueError(f"Failed to connect to the server: {str(e)}")
 
-    async def __guess_base_url(self) -> str:
-        try:
-            port = await asyncio.wait_for(
-                asyncio.gather(
-                    *[self.__is_localhost_with_given_port_lmstudio_server(port) for port in lms_default_ports],
-                    return_exceptions=True,
-                ),
-                timeout=10,  # Adjust timeout as needed
-            )
-            successful_port = next(p for p in port if isinstance(p, int))
-            return f"ws://127.0.0.1:{successful_port}"
-        except asyncio.TimeoutError:
-            raise ValueError("""
-                Failed to connect to LM Studio on the default port (1234).
-                Is LM Studio running? If not, you can start it by running `lms server start`.
-                (i) For more information, refer to the LM Studio documentation:
-                https://lmstudio.ai/docs/local-server
-            """)
+    def __guess_base_url(self, lms_default_ports) -> str:
+        for port in lms_default_ports:
+            try:
+                successful_port = self.__is_localhost_with_given_port_lmstudio_server(port)
+                return f"ws://127.0.0.1:{successful_port}"
+            except ValueError:
+                continue
+
+        raise ValueError("""
+            Failed to connect to LM Studio on any of the default ports.
+            Is LM Studio running? If not, you can start it by running `lms server start`.
+            (i) For more information, refer to the LM Studio documentation:
+            https://lmstudio.ai/docs/local-server
+        """)
 
     # ensure you connect and close properly!
     def __init__(self, opts: LMStudioClientConstructorOpts):
@@ -115,8 +104,8 @@ class LMStudioClient:
         # TODO: guess base url is async???? fuck! figure out a better way to do this
         # for now logic is in connect()
         self.base_url = opts.get("base_url", None)
-        # if self.base_url is None:
-        #    self.base_url = await self.__guess_base_url()
+        if self.base_url is None:
+            self.base_url = self.__guess_base_url()
         self.__validate_base_url_or_throw(self.base_url)
 
         # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints

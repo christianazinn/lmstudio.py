@@ -1,6 +1,6 @@
 from typing import Generic, TypeVar, List, Union
 from abc import ABC, abstractmethod
-import asyncio
+import threading
 
 from ...lms_dataclasses import (
     ModelDescriptor,
@@ -87,13 +87,13 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         Loading Llama 3:
 
         ```typescript
-        const model = await client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF");
+        const model = client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF");
         ```
 
         Loading a specific quantization (q4_k_m) of Llama 3:
 
         ```typescript
-        const model = await client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf");
+        const model = client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf");
         ```
 
         To unload the model, you can use the `client.llm.unload` method. Additionally, when the last
@@ -105,35 +105,30 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
 
         :param path: The path of the model to load.
         :param opts: Options for loading the model.
-        :return: A promise that resolves to the model that can be used for inferencing
+        :return: The model that can be used for inferencing
         """
         # TODO logging
-        promise = asyncio.Future()
         full_path: str = path
-
-        def resolve(value):
-            promise.set_result(value)
-
-        def reject(error):
-            promise.set_exception(error)
+        result = None
+        error = None
+        load_complete = threading.Event()
 
         def handle_message(message):
+            nonlocal full_path, result, error
             message_type = message.get("type", "")
             if message_type == "resolved":
-                nonlocal full_path
                 full_path = message.get("fullPath")
                 if message.get("ambiguous", False):
                     # FIXME this should be a warning
                     print(f"Multiple models found for {path}. Using the first one.")
                 # TODO there are a bunch of logging steps here but you don't have a logger
             elif message_type == "success":
-                resolve(
-                    self.create_domain_specific_model(
-                        self.__port,
-                        message.get("instanceReference"),
-                        {"identifier": message.get("identifier"), "path": path},
-                    )
+                result = self.create_domain_specific_model(
+                    self.__port,
+                    message.get("instanceReference"),
+                    {"identifier": message.get("identifier"), "path": path},
                 )
+                load_complete.set()
             elif message_type == "progress":
                 progress = message.get("progress")
                 if opts and "on_progress" in opts:
@@ -141,9 +136,10 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                     if on_progress is not None:
                         on_progress(progress)
             elif message_type == "error":
-                reject(Exception(message.get("message", "Unknown error")))
+                error = Exception(message.get("message", "Unknown error"))
+                load_complete.set()
 
-        channel_id = self.__port.create_channel(
+        self.__port.create_channel(
             "loadModel",
             {
                 "path": path,
@@ -162,17 +158,13 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             handle_message,
         )
 
-        def on_cancel():
-            # TODO async things again
-            self.__port.send_channel_message(channel_id, {"type": "cancel"})
-            reject(Exception("Model loading was cancelled"))
+        # Wait for the loading to complete
+        load_complete.wait()
 
-        if opts and hasattr(opts, "signal"):
-            signal = opts.get("signal")
-            if signal is not None:
-                signal.add_listener(on_cancel)
+        if error:
+            raise error
 
-        return promise  # type: ignore
+        return result
 
     def unload(self, identifier: str) -> None:
         """
