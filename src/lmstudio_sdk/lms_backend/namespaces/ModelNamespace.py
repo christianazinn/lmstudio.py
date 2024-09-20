@@ -1,5 +1,5 @@
-from typing import Generic, TypeVar, List, Union
-from abc import ABC, abstractmethod
+from typing import List, Union
+from abc import ABC
 import threading
 
 from ...lms_dataclasses import (
@@ -8,63 +8,33 @@ from ...lms_dataclasses import (
     ModelQuery,
     EmbeddingLoadModelConfig,
     LLMLoadModelConfig,
-    ModelDomainType,
     ModelSpecifier,
-    KVConfig,
-    convert_dict_to_kv_config,
 )
-from ..handles import DynamicHandle, EmbeddingDynamicHandle, LLMDynamicHandle, EmbeddingSpecificModel, LLMSpecificModel
+from ..handles import EmbeddingDynamicHandle, LLMDynamicHandle, EmbeddingSpecificModel, LLMSpecificModel
 from ..communications import ClientPort
+from ...backend_common import (
+    TClientPort,
+    TLoadModelConfig,
+    TDynamicHandle,
+    TSpecificModel,
+    BaseModelNamespace,
+    BaseLLMNamespace,
+    BaseEmbeddingNamespace,
+)
 
-# Type variables for generic types
-TClientPort = TypeVar("TClientPort", bound="ClientPort")
-TLoadModelConfig = TypeVar("TLoadModelConfig")
-TDynamicHandle = TypeVar("TDynamicHandle", bound="DynamicHandle")
-TSpecificModel = TypeVar("TSpecificModel")
 
-
-class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel]):
+class ModelNamespace(BaseModelNamespace[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
     """
     Abstract namespace for namespaces that deal with models.
 
     :public:
     """
 
-    _namespace: ModelDomainType
-    _default_load_config: TLoadModelConfig
-    __port: TClientPort
-
-    def __init__(self, port: TClientPort):
-        self.__port = port
-
-    @abstractmethod
-    def load_config_to_kv_config(self, config: TLoadModelConfig) -> KVConfig:
-        """
-        Method for converting the domain-specific load config to KVConfig.
-        """
-        pass
-
-    @abstractmethod
-    def create_domain_specific_model(
-        self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
-    ) -> TSpecificModel:
-        """
-        Method for creating a domain-specific model.
-        """
-        pass
-
-    @abstractmethod
-    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
-        """
-        Method for creating a domain-specific dynamic handle.
-        """
-        pass
-
     def connect(self) -> None:
-        self.__port.connect()
+        self._port.connect()
 
     def close(self) -> None:
-        self.__port.close()
+        self._port.close()
 
     def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
@@ -124,7 +94,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 # TODO there are a bunch of logging steps here but you don't have a logger
             elif message_type == "success":
                 result = self.create_domain_specific_model(
-                    self.__port,
+                    self._port,
                     message.get("instanceReference"),
                     {"identifier": message.get("identifier"), "path": path},
                 )
@@ -139,7 +109,7 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
                 error = Exception(message.get("message", "Unknown error"))
                 load_complete.set()
 
-        self.__port.create_channel(
+        self._port.create_channel(
             "loadModel",
             {
                 "path": path,
@@ -174,13 +144,13 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         :param identifier: The identifier of the model to unload.
         """
         assert isinstance(identifier, str)
-        self.__port.call_rpc("unloadModel", {"identifier": identifier})
+        self._port.call_rpc("unloadModel", {"identifier": identifier})
 
     def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
-        return self.__port.call_rpc("listLoaded", None)  # type: ignore
+        return self._port.call_rpc("listLoaded", None)  # type: ignore
 
     def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
         """
@@ -218,69 +188,15 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
         if isinstance(query, str):
             query = {"identifier": query}
         query["domain"] = self._namespace
-        info = self.__port.call_rpc(
+        info = self._port.call_rpc(
             "getModelInfo", {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True}
         )
         if not info or info is None:
             raise Exception("Model not found")
-        return self.create_domain_specific_model(self.__port, info.get("instanceReference"), info.get("descriptor"))  # type: ignore
+        return self.create_domain_specific_model(self._port, info.get("instanceReference"), info.get("descriptor"))  # type: ignore
 
     def unstable_get_any(self) -> TSpecificModel:
         return self.get({})
-
-    def create_dynamic_handle(self, query: Union[ModelQuery, str]) -> TDynamicHandle:
-        """
-        Get a dynamic model handle for any loaded model that satisfies the given query.
-
-        For more information on the query, see {@link ModelQuery}.
-
-        Note: The returned `LLMModel` is not tied to any specific loaded model. Instead, it represents
-        a "handle for a model that satisfies the given query". If the model that satisfies the query is
-        unloaded, the `LLMModel` will still be valid, but any method calls on it will fail. And later,
-        if a new model is loaded that satisfies the query, the `LLMModel` will be usable again.
-
-        You can use {@link LLMDynamicHandle#getModelInfo} to get information about the model that is
-        currently associated with this handle.
-
-        :example:
-
-        If you have loaded a model with the identifier "my-model", you can use it like this:
-
-        ```ts
-        const dh = client.llm.createDynamicHandle({ identifier: "my-model" });
-        const prediction = dh.complete("...");
-        ```
-
-        :example:
-
-        Use the Gemma 2B IT model (given it is already loaded elsewhere):
-
-        ```ts
-        const dh = client.llm.createDynamicHandle({ path: "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF" });
-        const prediction = dh.complete("...");
-        ```
-
-        :param query: The query to use to get the model.
-        """
-        # TODO figure out how to do union type checking
-        if isinstance(query, str):
-            query = {"identifier": query}
-        if "path" in query:
-            path = query.get("path")
-            if path is not None and "\\" in path:
-                raise ValueError("Model path should not contain backslashes.")
-
-        return self.create_domain_dynamic_handle(self.__port, {"type": "query", "query": query})
-
-    def create_dynamic_handle_from_instance_reference(self, instance_reference: str) -> TDynamicHandle:
-        """
-        Create a dynamic handle from the internal instance reference.
-
-        :alpha:
-        """
-        return self.create_domain_dynamic_handle(
-            self.__port, {"type": "instanceReference", "instanceReference": instance_reference}
-        )
 
     def unstable_get_or_load(
         self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
@@ -298,71 +214,27 @@ class ModelNamespace(ABC, Generic[TClientPort, TLoadModelConfig, TDynamicHandle,
             return self.load(path, load_opts)
 
 
-# TODO use special EmbeddingClientPort
 class EmbeddingNamespace(
-    ModelNamespace[ClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel]
+    BaseEmbeddingNamespace,
+    ModelNamespace[ClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
 ):
-    _namespace = "embedding"
-    _default_load_config: EmbeddingLoadModelConfig = {}
-
-    def load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
-        return convert_dict_to_kv_config(
-            {
-                "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
-                "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
-                "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
-                "contextLength": config.get("context_length"),
-                "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
-                "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
-                "llama.keepModelInMemory": config.get("keep_model_in_memory"),
-                "llama.tryMmap": config.get("try_mmap"),
-            }
-        )
-
     def create_domain_specific_model(
         self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(self, port: ClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
+    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
-class LLMNamespace(ModelNamespace[ClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel]):
-    _namespace = "llm"
-    _default_load_config: LLMLoadModelConfig = {}
-
-    def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
-        # why is this implemented like this???
-        fields = {
-            "contextLength": config.get("context_length"),
-            "llama.evalBatchSize": config.get("eval_batch_size"),
-            "llama.flashAttention": config.get("flash_attention"),
-            "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
-            "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
-            "llama.keepModelInMemory": config.get("keep_model_in_memory"),
-            "seed": config.get("seed"),
-            "llama.useFp16ForKVCache": config.get("use_fp16_for_kv_cache"),
-            "llama.tryMmap": config.get("try_mmap"),
-            "numExperts": config.get("num_experts"),
-        }
-        if "gpu_offload" in config:
-            gpu_offload = config.get("gpu_offload")
-            if isinstance(gpu_offload, float):
-                fields["llama.acceleration.offloadRatio"] = gpu_offload
-            else:
-                assert not isinstance(gpu_offload, int) and gpu_offload is not None
-                fields["llama.acceleration.offloadRatio"] = gpu_offload.get("ratio")
-                fields["llama.acceleration.mainGpu"] = gpu_offload.get("main_gpu")
-                fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensor_split")
-        return convert_dict_to_kv_config(fields)
-
+class LLMNamespace(
+    BaseLLMNamespace,
+    ModelNamespace[ClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel],
+):
     def create_domain_specific_model(
         self, port: ClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> LLMSpecificModel:
         return LLMSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(self, port: ClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
+    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
-
-    # TODO registerPromptPreprocessor

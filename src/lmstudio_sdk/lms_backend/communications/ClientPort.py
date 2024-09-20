@@ -1,41 +1,15 @@
 import json
 import threading
 import websocket
-from typing import Callable, Dict, Any
+from typing import Callable, Any
+from ...backend_common import BaseClientPort
 
 
-auth_version = 1
-
-
-class ClientPort:
-    _next_channel_id = 0
-    _next_rpc_call_id = 0
-    _channel_id_lock = threading.Lock()
-    _rpc_call_id_lock = threading.Lock()
-
+class ClientPort(BaseClientPort):
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
-        self.uri = uri + "/" + endpoint
-        self.identifier = identifier
-        self._passkey = passkey
-        self._websocket = None
-        self.channel_handlers: Dict[int, Callable] = {}
-        self.rpc_handlers: Dict[int, Callable] = {}
+        super().__init__(uri, endpoint, identifier, passkey)
         self._lock = threading.Lock()
         self._connection_event = threading.Event()
-
-    @classmethod
-    def get_next_channel_id(cls):
-        with cls._channel_id_lock:
-            channel_id = cls._next_channel_id
-            cls._next_channel_id += 1
-        return channel_id
-
-    @classmethod
-    def get_next_rpc_call_id(cls):
-        with cls._rpc_call_id_lock:
-            call_id = cls._next_rpc_call_id
-            cls._next_rpc_call_id += 1
-        return call_id
 
     def on_message(self, ws, message):
         data = json.loads(message)
@@ -86,7 +60,7 @@ class ClientPort:
         self._websocket.send(
             json.dumps(
                 {
-                    "authVersion": auth_version,
+                    "authVersion": self._auth_version,
                     "clientIdentifier": self.identifier,
                     "clientPasskey": self._passkey,
                 }

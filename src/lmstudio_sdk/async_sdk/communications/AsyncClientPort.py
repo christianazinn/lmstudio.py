@@ -1,53 +1,26 @@
 import asyncio
 import json
-import threading
-from typing import Callable, Dict, Any
+from typing import Callable, Any
+from ...backend_common import BaseClientPort
 
 import websockets
 
 
-auth_version = 1
-
-
-class ClientPort:
-    _next_channel_id = 0
-    _next_rpc_call_id = 0
-    _channel_id_lock = threading.Lock()
-    _rpc_call_id_lock = threading.Lock()
-
+class ClientPort(BaseClientPort):
     # TODO enums for allowable channel and rpc endpoints
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
-        self.uri = uri + "/" + endpoint
-        self.identifier = identifier
-        self.passkey = passkey
-        self.websocket = None
-        self.channel_handlers: Dict[int, Callable] = {}
-        self.rpc_handlers: Dict[int, Callable] = {}
+        super().__init__(uri, endpoint, identifier, passkey)
         self.running = False
         self.receive_task = None
-
-    @classmethod
-    def get_next_channel_id(cls):
-        with cls._channel_id_lock:
-            channel_id = cls._next_channel_id
-            cls._next_channel_id += 1
-        return channel_id
-
-    @classmethod
-    def get_next_rpc_call_id(cls):
-        with cls._rpc_call_id_lock:
-            call_id = cls._next_rpc_call_id
-            cls._next_rpc_call_id += 1
-        return call_id
 
     async def connect(self):
         self.websocket = await websockets.connect(self.uri)
         await self.websocket.send(
             json.dumps(
                 {
-                    "authVersion": auth_version,
+                    "authVersion": self._auth_version,
                     "clientIdentifier": self.identifier,
-                    "clientPasskey": self.passkey,
+                    "clientPasskey": self._passkey,
                 }
             )
         )
@@ -71,7 +44,7 @@ class ClientPort:
                 message = await self.websocket.recv()
                 data = json.loads(message)
                 # FIXME debug
-                # print("Message received: ", data)
+                print("Message received: ", data)
 
                 # TODO: more robust data handling
                 data_type = data.get("type", None)
@@ -128,6 +101,8 @@ class ClientPort:
         }
         if creation_parameter is not None:
             payload["creationParameter"] = creation_parameter
+
+        print(payload)
         self.channel_handlers[channel_id] = handler
 
         await self.__send_payload(payload)

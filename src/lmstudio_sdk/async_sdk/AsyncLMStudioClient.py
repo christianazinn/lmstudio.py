@@ -7,8 +7,9 @@ from base64 import b64encode
 from urllib.parse import urlparse
 from http.client import HTTPConnection
 
-from .lms_backend import ClientPort, DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
-from .lms_dataclasses import LMStudioClientConstructorOpts
+from .communications import ClientPort
+from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
+from ..lms_dataclasses import LMStudioClientConstructorOpts
 
 
 lms_default_ports = [1234]

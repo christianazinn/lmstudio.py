@@ -1,23 +1,18 @@
 from typing import List
 
 from ...lms_dataclasses import DownloadedModel
-from ..communications import ClientPort
+from ...backend_common import BaseSystemNamespace
 
 
-class SystemNamespace:
-    __port: ClientPort
-
-    def __init__(self, port: ClientPort):
-        self.__port = port
-
+class SystemNamespace(BaseSystemNamespace):
     def connect(self) -> None:
-        self.__port.connect()
+        self._port.connect()
 
     def close(self) -> None:
-        self.__port.close()
+        self._port.close()
 
     def list_downloaded_models(self) -> List[DownloadedModel]:
         """
         List all the models that have been downloaded.
         """
-        return self.__port.call_rpc("listDownloadedModels", None)  # type: ignore
+        return self._port.call_rpc("listDownloadedModels", None)  # type: ignore

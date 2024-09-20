@@ -1,4 +1,6 @@
-from lmstudio_sdk.LMStudioClient import LMStudioClient
+# from lmstudio_sdk.LMStudioClient import LMStudioClient
+from lmstudio_sdk.async_sdk import LMStudioClient
+import asyncio
 
 
 async def main():
@@ -12,10 +14,10 @@ async def main():
         # result = await llm_client.getLoadConfig(model_path)
         model = await llm_client.llm.unstable_get_any()
         # TODO unasyncify this
-        result = model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
-        async for completion in result:
-            print(type(completion))
-            print("frag", completion)
+        result = await (await model.respond([{"role": "user", "content": "Hello, how are you?"}], {}))
+        # async for completion in result:
+        #    print(type(completion))
+        #    print("frag", completion)
         # TODO result does not properly close
         print(type(result))
         # result = await llm_client.load_model(model_path)
@@ -41,4 +43,5 @@ def syncmain():
 
 
 if __name__ == "__main__":
-    syncmain()
+    #    syncmain()
+    asyncio.run(main())

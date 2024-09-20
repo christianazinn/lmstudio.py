@@ -1,9 +1,9 @@
 from typing import Optional
-from ..communications import ClientPort
-from ...lms_dataclasses import ModelDescriptor, ModelSpecifier, KVConfig
+from ...lms_dataclasses import ModelDescriptor, KVConfig
+from ...backend_common import BaseDynamicHandle
 
 
-class DynamicHandle:
+class DynamicHandle(BaseDynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -14,13 +14,6 @@ class DynamicHandle:
     model.
     """
 
-    port: ClientPort
-    specifier: ModelSpecifier
-
-    def __init__(self, port: ClientPort, specifier: ModelSpecifier):
-        self.port = port
-        self.specifier = specifier
-
     def get_model_info(self) -> Optional[ModelDescriptor]:
         """
         Gets the information of the model that is currently associated with this `LLMModel`. If no
@@ -29,10 +22,10 @@ class DynamicHandle:
         Note: As models are loaded/unloaded, the model associated with this `LLMModel` may change at
         any moment.
         """
-        info = self.port.call_rpc("getModelInfo", {"specifier": self.specifier, "throwIfNotFound": False})
+        info = self._port.call_rpc("getModelInfo", {"specifier": self._specifier, "throwIfNotFound": False})
         if info is None:
             return None
         return info.get("descriptor", None)
 
     def get_load_config(self) -> KVConfig:
-        return self.port.call_rpc("getLoadConfig", {"specifier": self.specifier})
+        return self._port.call_rpc("getLoadConfig", {"specifier": self._specifier})

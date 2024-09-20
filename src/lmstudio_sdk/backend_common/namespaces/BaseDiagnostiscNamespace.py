@@ -1,3 +1,4 @@
+from abc import ABC
 from typing import Literal, Callable, TypedDict
 
 
@@ -13,15 +14,9 @@ class DiagnosticsLogEvent(TypedDict):
     data: DiagnosticsLogEventData
 
 
-class DiagnosticsNamespace:
+class BaseDiagnosticsNamespace(ABC):
     def __init__(self, port):
-        self.__port = port  # Type not specified in TypeScript
-
-    async def connect(self) -> None:
-        await self.__port.connect()
-
-    async def close(self) -> None:
-        await self.__port.close()
+        self._port = port
 
     # TODO make me work
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:

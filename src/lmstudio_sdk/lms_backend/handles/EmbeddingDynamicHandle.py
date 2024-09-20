@@ -1,10 +1,11 @@
 from typing import List
 
 from ...lms_dataclasses import find_key_in_kv_config
+from ...backend_common import BaseEmbeddingDynamicHandle
 from .DynamicHandle import DynamicHandle
 
 
-class EmbeddingDynamicHandle(DynamicHandle):
+class EmbeddingDynamicHandle(DynamicHandle, BaseEmbeddingDynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -24,7 +25,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        return self.port.call_rpc("embedString", {"specifier": self.specifier, "inputString": input_string})
+        return self._port.call_rpc("embedString", {"specifier": self._specifier, "inputString": input_string})
 
     def unstable_get_context_length(self) -> int:
         """
@@ -32,7 +33,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
 
         :return: The context length as an integer.
         """
-        context_length = find_key_in_kv_config(self.get_load_config(), "context_length")
+        context_length = find_key_in_kv_config(self.get_load_config(), "contextLength")
         return context_length if context_length is not None else -1
 
     def unstable_get_eval_batch_size(self) -> int:
@@ -52,6 +53,6 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :return: A list of integers representing the tokenized string.
         """
         assert isinstance(input_string, str)
-        return (self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
+        return (self._port.call_rpc("tokenize", {"specifier": self._specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )

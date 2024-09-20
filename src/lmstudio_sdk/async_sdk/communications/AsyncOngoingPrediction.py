@@ -2,10 +2,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, List, Any, Generic, TypeVar, AsyncIterator
-from ..models import ModelDescriptor
-from .KVConfig import KVConfig
-from .LLMPredictionStats import LLMPredictionStats
-from .PredictionResult import PredictionResult
+from ...lms_dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
 
 
 TFragment = TypeVar("TFragment")

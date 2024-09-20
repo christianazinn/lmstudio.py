@@ -1,5 +1,5 @@
-from .EmbeddingDynamicHandle import EmbeddingDynamicHandle
-from .LLMDynamicHandle import LLMDynamicHandle
+from .AsyncEmbeddingDynamicHandle import EmbeddingDynamicHandle
+from .AsyncLLMDynamicHandle import LLMDynamicHandle
 from ...backend_common import BaseEmbeddingSpecificModel, BaseLLMSpecificModel
 
 

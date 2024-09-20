@@ -9,7 +9,6 @@ from .lms_backend import (
     LLMNamespace,
     LLMSpecificModel,
     OngoingPrediction,
-    SpecificModel,
     SystemNamespace,
 )
 from .lms_dataclasses import (
@@ -115,6 +114,5 @@ __all__ = [
     "OngoingPrediction",
     "PredictionResult",
     "QueryModel",
-    "SpecificModel",
     "SystemNamespace",
 ]

@@ -1,4 +1,4 @@
-from typing import List, Callable, Optional, Dict, Union, Tuple
+from typing import List, Callable
 
 from ...lms_dataclasses import (
     convert_dict_to_kv_config,
@@ -11,79 +11,19 @@ from ...lms_dataclasses import (
     LLMCompletionContextInput,
     LLMContext,
     LLMConversationContextInput,
-    LLMPredictionConfig,
     LLMPredictionExtraOpts,
     LLMPredictionOpts,
     LLMPredictionStats,
     ModelDescriptor,
     ModelSpecifier,
-    OngoingPrediction,
 )
 from ...typescript_ported import BufferedEvent
-from .DynamicHandle import DynamicHandle
+from .AsyncDynamicHandle import DynamicHandle
+from ..communications import OngoingPrediction
+from ...backend_common import BaseLLMDynamicHandle
 
 
-def number_to_checkbox_numeric(
-    value: Optional[float], unchecked_value: float, value_when_unchecked: float
-) -> Optional[Dict[str, Union[bool, float]]]:
-    if value is None:
-        return None
-    if value == unchecked_value:
-        return {"checked": False, "value": value_when_unchecked}
-    if value != unchecked_value:
-        return {"checked": True, "value": value}
-
-
-def prediction_config_to_kv_config(prediction_config: LLMPredictionConfig | None) -> KVConfig:
-    fields = []
-    if prediction_config is not None:
-        # HACK i hate this
-        for default_key in ["temperature", "context_overflow_policy", "stop_strings", "structured", "top_k_sampling"]:
-            if default_key in prediction_config:
-                fields.append({"key": default_key, "value": prediction_config[default_key]})
-        if "max_predicted_tokens" in prediction_config:
-            fields.append(
-                {
-                    "key": "max_predicted_tokens",
-                    "value": number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
-                }
-            )
-        if "repeat_penalty" in prediction_config:
-            fields.append(
-                {
-                    "key": "repeat_penalty",
-                    "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
-                }
-            )
-        if "min_p_sampling" in prediction_config:
-            fields.append(
-                {
-                    "key": "min_p_sampling",
-                    "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
-                }
-            )
-        if "top_p_sampling" in prediction_config:
-            fields.append(
-                {
-                    "key": "top_p_sampling",
-                    "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
-                }
-            )
-        if "cpu_threads" in prediction_config:
-            fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
-    return {"fields": fields}
-
-
-def split_opts(opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
-    extra_opts: LLMPredictionExtraOpts = {}
-    for key in ["on_prompt_processing_progress", "on_first_token"]:
-        if key in opts:
-            extra_opts[key] = opts[key]
-            del opts[key]
-    return opts, extra_opts
-
-
-class LLMDynamicHandle(DynamicHandle):
+class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -95,8 +35,6 @@ class LLMDynamicHandle(DynamicHandle):
 
     :public:
     """
-
-    __internal_kv_config_stack = KVConfigStack(layers=[])
 
     async def __predict_internal(
         self,
@@ -137,7 +75,9 @@ class LLMDynamicHandle(DynamicHandle):
             elif message_type == "error":
                 on_error(Exception(message.get("message", "Unknown error")))
 
-        channel_id = await self.port.create_channel(
+        print("about to create channel")
+
+        channel_id = await self._port.create_channel(
             "predict",
             {
                 "modelSpecifier": modelSpecifier,
@@ -147,9 +87,11 @@ class LLMDynamicHandle(DynamicHandle):
             handle_fragments,
         )
 
+        print("channel nominal")
+
         def cancel_send():
             if not finished:
-                self.port.send_channel_message(channel_id, {"type": "cancel"})
+                self._port.send_channel_message(channel_id, {"type": "cancel"})
 
         cancel_event.subscribeOnce(cancel_send)
 
@@ -199,19 +141,19 @@ class LLMDynamicHandle(DynamicHandle):
         :param prompt: The prompt to use for prediction.
         :param opts: Options for the prediction.
         """
-        config, extra_opts = split_opts(opts)
+        config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         config["stop_strings"] = []
-        prediction_layers = self.__internal_kv_config_stack.get("layers", [])
+        prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            {"layer_name": KVConfigLayerName.API_OVERRIDE, "config": prediction_config_to_kv_config(config)}
+            {"layerName": KVConfigLayerName.API_OVERRIDE, "config": self.prediction_config_to_kv_config(config)}
         )
         prediction_layers.append(
             {
-                "layer_name": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+                "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
                 "config": convert_dict_to_kv_config(
                     {
                         "promptTemplate": {
@@ -229,8 +171,8 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
         await self.__predict_internal(
-            self.specifier,
-            self.__resolve_completion_context(prompt),
+            self._specifier,
+            self._resolve_completion_context(prompt),
             {"layers": prediction_layers},
             cancel_event,
             extra_opts,
@@ -241,9 +183,6 @@ class LLMDynamicHandle(DynamicHandle):
             lambda error: failed(error),
         )
         return ongoing_prediction
-
-    def __resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
-        return {"history": [{"role": "user", "content": [{"type": "text", "text": contextInput}]}]}
 
     async def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
@@ -295,34 +234,30 @@ class LLMDynamicHandle(DynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        return await self.predict(self.__resolve_conversation_context(history), opts)
-
-    def __resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
-        return {
-            "history": [
-                {"role": item.get("role", "user"), "content": [{"type": "text", "text": item.get("content", "")}]}
-                for item in context_input
-            ]
-        }
+        return await self.predict(self._resolve_conversation_context(history), opts)
 
     async def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
         :alpha:
         """
 
-        config, extra_opts = split_opts(opts)
+        config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         api_override_layer = KVConfigStackLayer(
-            layer_name=KVConfigLayerName.API_OVERRIDE, config=prediction_config_to_kv_config(config)
+            layerName=KVConfigLayerName.API_OVERRIDE, config=self.prediction_config_to_kv_config(config)
         )
-        prediction_layers = self.__internal_kv_config_stack.get("layers", [])
+        prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
 
+        print(self._specifier)
+        print(context)
+        print(prediction_layers)
+
         await self.__predict_internal(
-            self.specifier,
+            self._specifier,
             context,
             KVConfigStack(layers=prediction_layers),
             cancel_event,
@@ -343,23 +278,23 @@ class LLMDynamicHandle(DynamicHandle):
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
         return (
-            await self.port.call_rpc(
+            await self._port.call_rpc(
                 "applyPromptTemplate",
                 {
-                    "specifier": self.specifier,
+                    "specifier": self._specifier,
                     "context": context,
                     "opts": opts,
-                    "predictionConfigStack": self.__internal_kv_config_stack,
+                    "predictionConfigStack": self._internal_kv_config_stack,
                 },
             )
         ).get("formatted", "")
 
     async def unstable_tokenize(self, input_string: str) -> List[int]:
-        return (await self.port.call_rpc("tokenize", {"specifier": self.specifier, "inputString": input_string})).get(
+        return (await self._port.call_rpc("tokenize", {"specifier": self._specifier, "inputString": input_string})).get(
             "tokens", [-1]
         )
 
     async def unstable_count_tokens(self, input_string: str) -> int:
         return (
-            await self.port.call_rpc("countTokens", {"specifier": self.specifier, "inputString": input_string})
+            await self._port.call_rpc("countTokens", {"specifier": self._specifier, "inputString": input_string})
         ).get("tokenCount", -1)
