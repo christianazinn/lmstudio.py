@@ -1,5 +1,5 @@
 # from lmstudio_sdk.LMStudioClient import LMStudioClient
-from lmstudio_sdk.async_sdk import LMStudioClient
+from lmstudio_sdk.asynchronous import LMStudioClient
 import asyncio
 
 

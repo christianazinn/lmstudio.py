@@ -10,7 +10,6 @@ TODO: move things to lmstudio_sdk, lmstudio_async or lmstudio_sdk.async, lmstudi
 -> TODO: consolidate what code you can
 
 TODO: is there a way to do the same damn thing but just wrap some functions in async???
-TODO: fix your package exports
-TODO: actually move to lms_common
+TODO: actually move to common
 TODO: sync code does not respect SIGINT
-TODO: move fixes from sync code to async code
+TODO: type hints for things like connect, close, call_rpc: abstract methods and whatnot???
