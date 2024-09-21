@@ -87,9 +87,9 @@ def sync_async_decorator(
 
 def get_target_and_method(self, obj_method):
     if isinstance(obj_method, str):
-        if hasattr(self, obj_method):
-            return self, getattr(self, obj_method)
-        return self._port, getattr(self._port, obj_method)
+        if hasattr(self._port, obj_method):
+            return self._port, getattr(self._port, obj_method)
+        return self, getattr(self, obj_method)
     elif isinstance(obj_method, tuple):
         obj_name, method_name = obj_method
         target_obj = getattr(self, obj_name)

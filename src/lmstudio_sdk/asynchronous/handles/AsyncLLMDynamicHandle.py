@@ -1,9 +1,7 @@
-from typing import List, Callable, Optional, Dict, Union, Tuple, Any
+from typing import List, Callable, Optional, Dict, Union, Tuple
 from functools import partial
-from asyncio import iscoroutinefunction
 
 from ...common import (
-    BaseLLMDynamicHandle,
     BufferedEvent,
     convert_dict_to_kv_config,
     find_key_in_kv_config,
@@ -44,7 +42,7 @@ def predict_internal_process_result(extra):
 
 
 # TODO rework the big boy functions
-class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
+class LLMDynamicHandle(DynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.

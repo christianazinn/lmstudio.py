@@ -17,9 +17,9 @@ TODO: code hangs on RPC errors
 TODO: fix up imports again!!!
 TODO: make return types Optional for error handling
 TODO: clean up import statements, alphabetize
+TODO: \_connect, \_close should be connect, close
 
 ABSOLUTELY REMAINS TO BE DONE:
-LLMDynamicHandle
 ModelNamespace
 LMStudioClient
 Refactor!!!
