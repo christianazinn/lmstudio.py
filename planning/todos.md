@@ -12,3 +12,12 @@ TODO: is there a way to do the same damn thing but just wrap some functions in a
 https://discuss.python.org/t/how-can-async-support-dispatch-between-sync-and-async-variants-of-the-same-code/15014
 TODO: sync code does not respect SIGINT
 TODO: type hints for things like connect, close, call_rpc: abstract methods and whatnot???
+TODO: clean up prints and such
+TODO: code hangs on RPC errors
+TODO: fix up imports again!!!
+
+ABSOLUTELY REMAINS TO BE DONE:
+LLMDynamicHandle
+ModelNamespace
+LMStudioClient
+Refactor!!!

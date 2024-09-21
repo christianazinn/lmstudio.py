@@ -11,6 +11,8 @@ async def main():
         # model_path = "Qwen/Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
         # model_path = "qwen2"
 
+        await llm_client.system.list_downloaded_models()
+
         # result = await llm_client.getLoadConfig(model_path)
         model = await llm_client.llm.unstable_get_any()
         # TODO unasyncify this
@@ -22,6 +24,12 @@ async def main():
         print(type(result))
         # result = await llm_client.load_model(model_path)
         print("Model loaded:", result)
+
+        tokenCount = await model.unstable_tokenize("Hello, how are you?")
+        print("Token count:", tokenCount)
+
+        contextLength = await model.unstable_get_context_length()
+        print("Context length:", contextLength)
 
         # async for completion in llm_client.predict(model_path):
         #    print(completion)

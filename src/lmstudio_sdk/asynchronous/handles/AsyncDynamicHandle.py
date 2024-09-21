@@ -1,8 +1,8 @@
 from typing import Optional
-from ...common import ModelDescriptor, KVConfig, BaseDynamicHandle
+from ...common import ModelDescriptor, KVConfig, sync_async_decorator, BaseClientPort, ModelSpecifier
 
 
-class DynamicHandle(BaseDynamicHandle):
+class DynamicHandle:
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -13,7 +13,17 @@ class DynamicHandle(BaseDynamicHandle):
     model.
     """
 
-    async def get_model_info(self) -> Optional[ModelDescriptor]:
+    _port: BaseClientPort
+    _specifier: ModelSpecifier
+
+    def __init__(self, port: BaseClientPort, specifier: ModelSpecifier):
+        self._port = port
+        self._specifier = specifier
+
+    @sync_async_decorator(
+        obj_method="call_rpc", process_result=lambda x: x.get("descriptor") if x is not None else None
+    )
+    def get_model_info(self) -> Optional[ModelDescriptor]:
         """
         Gets the information of the model that is currently associated with this `LLMModel`. If no
         model is currently associated, this will return `None`.
@@ -21,10 +31,8 @@ class DynamicHandle(BaseDynamicHandle):
         Note: As models are loaded/unloaded, the model associated with this `LLMModel` may change at
         any moment.
         """
-        info = await self._port.call_rpc("getModelInfo", {"specifier": self._specifier, "throwIfNotFound": False})
-        if info is None:
-            return None
-        return info.get("descriptor", None)
+        return {"endpoint": "getModelInfo", "parameter": {"specifier": self._specifier, "throwIfNotFound": False}}
 
-    async def get_load_config(self) -> KVConfig:
-        return await self._port.call_rpc("getLoadConfig", {"specifier": self._specifier})
+    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
+    def get_load_config(self) -> KVConfig:
+        return {"endpoint": "getLoadConfig", "parameter": {"specifier": self._specifier}}

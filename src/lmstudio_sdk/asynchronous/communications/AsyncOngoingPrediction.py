@@ -9,6 +9,7 @@ TFragment = TypeVar("TFragment")
 TFinal = TypeVar("TFinal")
 
 
+# TODO polish
 class StreamablePromise(Generic[TFragment, TFinal], ABC):
     def __init__(self):
         self.queue: asyncio.Queue[Optional[TFragment]] = asyncio.Queue()

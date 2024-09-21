@@ -64,6 +64,7 @@ from .dataclasses import (
 )
 from .typescript_ported import AbortSignal, BufferedEvent
 from .utils import lms_default_ports, generate_random_base64
+from .sync_async_decorator import sync_async_decorator
 
 __all__ = [
     "BaseClientPort",
@@ -130,4 +131,5 @@ __all__ = [
     "BufferedEvent",
     "lms_default_ports",
     "generate_random_base64",
+    "sync_async_decorator",
 ]

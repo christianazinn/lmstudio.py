@@ -123,7 +123,8 @@ class BaseEmbeddingNamespace(ABC):
                 "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
                 "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
                 "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
-                "contextLength": config.get("context_length"),
+                # TODO don't know if you need the embedding.load
+                "embedding.load.contextLength": config.get("context_length"),
                 "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
                 "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
                 "llama.keepModelInMemory": config.get("keep_model_in_memory"),
@@ -139,7 +140,8 @@ class BaseLLMNamespace(ABC):
     def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
         # why is this implemented like this???
         fields = {
-            "contextLength": config.get("context_length"),
+            # TODO don't know if you need the llm.load
+            "llm.load.contextLength": config.get("context_length"),
             "llama.evalBatchSize": config.get("eval_batch_size"),
             "llama.flashAttention": config.get("flash_attention"),
             "llama.ropeFrequencyBase": config.get("rope_frequency_base"),

@@ -1,17 +1,26 @@
 from typing import List
 
-from ...common import BaseSystemNamespace, DownloadedModel
+from ...common import DownloadedModel, sync_async_decorator
+from ..communications.BaseClientPort import BaseClientPort
 
 
-class SystemNamespace(BaseSystemNamespace):
-    async def connect(self) -> None:
-        await self._port.connect()
+class SystemNamespace:
+    _port: BaseClientPort
 
-    async def close(self) -> None:
-        await self._port.close()
+    def __init__(self, port: BaseClientPort):
+        self._port = port
 
-    async def list_downloaded_models(self) -> List[DownloadedModel]:
+    @sync_async_decorator(obj_method="_connect", process_result=lambda x: None)
+    def connect(self) -> None:
+        return {}
+
+    @sync_async_decorator(obj_method="_close", process_result=lambda x: None)
+    def close(self) -> None:
+        return {}
+
+    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
+    def list_downloaded_models(self) -> List[DownloadedModel]:
         """
         List all the models that have been downloaded.
         """
-        return await self._port.call_rpc("listDownloadedModels", None)  # type: ignore
+        return {"endpoint": "listDownloadedModels", "parameter": None}

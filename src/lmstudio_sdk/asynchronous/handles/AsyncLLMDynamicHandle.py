@@ -18,11 +18,13 @@ from ...common import (
     LLMPredictionStats,
     ModelDescriptor,
     ModelSpecifier,
+    sync_async_decorator,
 )
 from .AsyncDynamicHandle import DynamicHandle
 from ..communications import OngoingPrediction
 
 
+# TODO rework the big boy functions
 class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
@@ -49,7 +51,7 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
     ):
         finished = False
 
-        async def handle_fragments(message: dict):
+        def handle_fragments(message: dict):
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
@@ -184,6 +186,7 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         )
         return ongoing_prediction
 
+    @sync_async_decorator(obj_method="predict", process_result=lambda x: x)
     async def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
         Use the loaded model to generate a response based on the given history.
@@ -234,7 +237,7 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        return await self.predict(self._resolve_conversation_context(history), opts)
+        return {"context": self._resolve_conversation_context(history), "opts": opts}
 
     async def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> OngoingPrediction:
         """
@@ -270,31 +273,32 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         )
         return ongoing_prediction
 
-    async def unstable_get_context_length(self) -> int:
-        context_length = find_key_in_kv_config(await self.get_load_config(), "contextLength")
-        return context_length if context_length else -1
+    @sync_async_decorator(
+        obj_method="get_load_config", process_result=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1
+    )
+    def unstable_get_context_length(self) -> int:
+        return {}
 
-    async def unstable_apply_prompt_template(
+    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("formatted", ""))
+    def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
-        return (
-            await self._port.call_rpc(
-                "applyPromptTemplate",
-                {
-                    "specifier": self._specifier,
-                    "context": context,
-                    "opts": opts,
-                    "predictionConfigStack": self._internal_kv_config_stack,
-                },
-            )
-        ).get("formatted", "")
+        return {
+            "endpoint": "applyPromptTemplate",
+            "parameter": {
+                "specifier": self._specifier,
+                "context": context,
+                "opts": opts,
+                "predictionConfigStack": self._internal_kv_config_stack,
+            },
+        }
 
-    async def unstable_tokenize(self, input_string: str) -> List[int]:
-        return (await self._port.call_rpc("tokenize", {"specifier": self._specifier, "inputString": input_string})).get(
-            "tokens", [-1]
-        )
+    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokens", [-1]))
+    def unstable_tokenize(self, input_string: str) -> List[int]:
+        assert isinstance(input_string, str)
+        return {"endpoint": "tokenize", "parameter": {"specifier": self._specifier, "inputString": input_string}}
 
-    async def unstable_count_tokens(self, input_string: str) -> int:
-        return (
-            await self._port.call_rpc("countTokens", {"specifier": self._specifier, "inputString": input_string})
-        ).get("tokenCount", -1)
+    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokenCount", -1))
+    def unstable_count_tokens(self, input_string: str) -> int:
+        assert isinstance(input_string, str)
+        return {"endpoint": "countTokens", "parameter": {"specifier": self._specifier, "inputString": input_string}}

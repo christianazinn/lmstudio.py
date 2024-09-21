@@ -1,6 +1,8 @@
+from .AsyncDynamicHandle import DynamicHandle
 from .AsyncEmbeddingDynamicHandle import EmbeddingDynamicHandle
 from .AsyncLLMDynamicHandle import LLMDynamicHandle
-from ...common import BaseEmbeddingSpecificModel, BaseLLMSpecificModel
+from ..communications.BaseClientPort import BaseClientPort
+from ...common import ModelDescriptor
 
 
 """
@@ -11,7 +13,20 @@ all the methods we want are conveniently inherited. /shrug
 """
 
 
-class EmbeddingSpecificModel(EmbeddingDynamicHandle, BaseEmbeddingSpecificModel):
+# TODO rework inheritance structure
+class SpecificModel(DynamicHandle):
+    identifier: str
+    specifier: str
+
+    def __init__(self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor):
+        # assert isinstance(port, BaseClientPort)
+        assert isinstance(instance_reference, str)
+        super().__init__(port, {"type": "instanceReference", "instanceReference": instance_reference})
+        self.identifier = descriptor["identifier"]
+        self.path = descriptor["path"]
+
+
+class EmbeddingSpecificModel(EmbeddingDynamicHandle, SpecificModel):
     """
     Represents a specific loaded Embedding. Most Embedding related operations are inherited from
     {@link EmbeddingDynamicHandle}.
@@ -20,7 +35,7 @@ class EmbeddingSpecificModel(EmbeddingDynamicHandle, BaseEmbeddingSpecificModel)
     """
 
 
-class LLMSpecificModel(LLMDynamicHandle, BaseLLMSpecificModel):
+class LLMSpecificModel(LLMDynamicHandle, SpecificModel):
     """
     Represents a specific loaded LLM. Most LLM related operations are inherited from
     {@link LLMDynamicHandle}.

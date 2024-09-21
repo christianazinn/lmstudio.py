@@ -1,7 +1,6 @@
 import asyncio
 import json
-from typing import Callable, Any
-from ...common import BaseClientPort
+from .BaseClientPort import BaseClientPort
 
 import websockets
 
@@ -13,9 +12,9 @@ class ClientPort(BaseClientPort):
         self.running = False
         self.receive_task = None
 
-    async def connect(self):
-        self.websocket = await websockets.connect(self.uri)
-        await self.websocket.send(
+    async def _connect(self):
+        self._websocket = await websockets.connect(self.uri)
+        await self._websocket.send(
             json.dumps(
                 {
                     "authVersion": self._auth_version,
@@ -27,10 +26,10 @@ class ClientPort(BaseClientPort):
         self.running = True
         self.receive_task = asyncio.create_task(self.receive_messages())
 
-    async def close(self):
+    async def _close(self):
         self.running = False
-        if self.websocket:
-            await self.websocket.close()
+        if self._websocket:
+            await self._websocket.close()
         if self.receive_task:
             try:
                 await asyncio.wait_for(self.receive_task, timeout=5.0)
@@ -40,8 +39,8 @@ class ClientPort(BaseClientPort):
     async def receive_messages(self):
         try:
             while self.running:
-                assert self.websocket is not None
-                message = await self.websocket.recv()
+                assert self._websocket is not None
+                message = await self._websocket.recv()
                 data = json.loads(message)
                 # FIXME debug
                 print("Message received: ", data)
@@ -56,7 +55,7 @@ class ClientPort(BaseClientPort):
                 if data_type == "channelSend":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        await self.channel_handlers[channel_id](data.get("message", {}))
+                        self.channel_handlers[channel_id](data.get("message", {}))
                 elif data_type == "channelClose":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
@@ -64,7 +63,7 @@ class ClientPort(BaseClientPort):
                 elif data_type == "channelError":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        await self.channel_handlers[channel_id](data.get("error", {}))
+                        self.channel_handlers[channel_id](data.get("error", {}))
                         del self.channel_handlers[channel_id]
 
                 # RPC endpoints
@@ -74,7 +73,7 @@ class ClientPort(BaseClientPort):
                     call_id = data.get("callId", -1)
                     # TODO we should pass only the error dict
                     if call_id in self.rpc_handlers:
-                        await self.rpc_handlers[call_id](data)
+                        self.rpc_handlers[call_id](data)
                         del self.rpc_handlers[call_id]
         except AssertionError:
             print("WebSocket connection not established in receive_messages: this should never happen?")
@@ -85,62 +84,18 @@ class ClientPort(BaseClientPort):
         finally:
             self.running = False
 
-    async def __send_payload(self, payload: dict):
-        assert self.websocket is not None
-        await self.websocket.send(json.dumps(payload))
+    async def _send_payload(self, payload: dict):
+        assert self._websocket is not None
+        await self._websocket.send(json.dumps(payload))
 
-    # TODO: endpoint enum
-    # TODO: ensure handler is async
-    async def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
-        assert self.websocket is not None
-        channel_id = self.get_next_channel_id()
-        payload = {
-            "type": "channelCreate",
-            "endpoint": endpoint,
-            "channelId": channel_id,
-        }
-        if creation_parameter is not None:
-            payload["creationParameter"] = creation_parameter
+    def _rpc_complete_event(self):
+        return asyncio.Event()
 
-        print(payload)
-        self.channel_handlers[channel_id] = handler
-
-        await self.__send_payload(payload)
-        return channel_id
-
-    async def send_channel_message(self, channel_id: int, payload: dict):
-        assert self.websocket is not None
-        payload["channelId"] = channel_id
-        await self.__send_payload(payload)
-
-    # TODO type hint for return type
-    # from experience: making this synchronous is more trouble than worth
-    async def call_rpc(self, endpoint: str, parameter: Any | None):
-        assert self.websocket is not None
-
-        complete = asyncio.Event()
-        result = {}
-
-        async def rpc_handler(data):
-            nonlocal result
-            result.update(data)
-            complete.set()
-
-        call_id = self.get_next_rpc_call_id()
-        payload = {
-            "type": "rpcCall",
-            "endpoint": endpoint,
-            "callId": call_id,
-        }
-        if parameter is not None:
-            payload["parameter"] = parameter
-        self.rpc_handlers[call_id] = rpc_handler
-
-        await self.websocket.send(json.dumps(payload))
+    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict):
+        assert self._websocket is not None
+        await self._send_payload(payload)
         await complete.wait()
-        # Send the payload asynchronously
-
-        return result.get("result", result)
+        return result
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

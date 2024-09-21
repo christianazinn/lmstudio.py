@@ -22,6 +22,7 @@ from ..handles import EmbeddingDynamicHandle, LLMDynamicHandle, EmbeddingSpecifi
 from ..communications import ClientPort
 
 
+# TODO ughhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 class ModelNamespace(BaseModelNamespace[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
     """
     Abstract namespace for namespaces that deal with models.
@@ -30,10 +31,10 @@ class ModelNamespace(BaseModelNamespace[TClientPort, TLoadModelConfig, TDynamicH
     """
 
     async def connect(self) -> None:
-        await self._port.connect()
+        await self._port._connect()
 
     async def close(self) -> None:
-        await self._port.close()
+        await self._port._close()
 
     async def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
@@ -86,7 +87,7 @@ class ModelNamespace(BaseModelNamespace[TClientPort, TLoadModelConfig, TDynamicH
         def reject(error):
             promise.set_exception(error)
 
-        async def handle_message(message):
+        def handle_message(message):
             message_type = message.get("type", "")
             if message_type == "resolved":
                 nonlocal full_path
