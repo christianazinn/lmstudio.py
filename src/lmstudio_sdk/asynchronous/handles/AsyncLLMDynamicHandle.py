@@ -1,4 +1,6 @@
-from typing import List, Callable
+from typing import List, Callable, Optional, Dict, Union, Tuple, Any
+from functools import partial
+from asyncio import iscoroutinefunction
 
 from ...common import (
     BaseLLMDynamicHandle,
@@ -19,9 +21,26 @@ from ...common import (
     ModelDescriptor,
     ModelSpecifier,
     sync_async_decorator,
+    LLMPredictionConfig,
 )
 from .AsyncDynamicHandle import DynamicHandle
-from ..communications import OngoingPrediction
+
+
+def predict_internal_process_result(extra):
+    original_extra = extra.get("extra")
+    cancel_event = original_extra.get("cancel_event")
+    cancel_send = original_extra.get("cancel_send")
+    channel_id = extra.get("channel_id")
+
+    print(type(cancel_event))
+    print(type(cancel_send))
+    print(type(channel_id))
+
+    # TODO why on god's green earth is this calling your syncasyncdecorator?
+    # oh because it's not a callback once you pass the function, it's a call... uhhhhhhhhhhhhhhhhh
+    cancel_event.subscribeOnce(partial(cancel_send, channel_id))
+
+    return original_extra
 
 
 # TODO rework the big boy functions
@@ -38,35 +57,113 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
     :public:
     """
 
-    async def __predict_internal(
+    _internal_kv_config_stack = KVConfigStack(layers=[])
+
+    def number_to_checkbox_numeric(
+        self, value: Optional[float], unchecked_value: float, value_when_unchecked: float
+    ) -> Optional[Dict[str, Union[bool, float]]]:
+        if value is None:
+            return None
+        if value == unchecked_value:
+            return {"checked": False, "value": value_when_unchecked}
+        if value != unchecked_value:
+            return {"checked": True, "value": value}
+
+    def prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
+        fields = []
+        if prediction_config is not None:
+            # HACK i hate this
+            for default_key in [
+                "temperature",
+                "context_overflow_policy",
+                "stop_strings",
+                "structured",
+                "top_k_sampling",
+            ]:
+                if default_key in prediction_config:
+                    fields.append({"key": default_key, "value": prediction_config[default_key]})
+            if "max_predicted_tokens" in prediction_config:
+                fields.append(
+                    {
+                        "key": "max_predicted_tokens",
+                        "value": self.number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
+                    }
+                )
+            if "repeat_penalty" in prediction_config:
+                fields.append(
+                    {
+                        "key": "repeat_penalty",
+                        "value": self.number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
+                    }
+                )
+            if "min_p_sampling" in prediction_config:
+                fields.append(
+                    {
+                        "key": "min_p_sampling",
+                        "value": self.number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
+                    }
+                )
+            if "top_p_sampling" in prediction_config:
+                fields.append(
+                    {
+                        "key": "top_p_sampling",
+                        "value": self.number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
+                    }
+                )
+            if "cpu_threads" in prediction_config:
+                fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
+        return {"fields": fields}
+
+    def split_opts(self, opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+        extra_opts: LLMPredictionExtraOpts = {}
+        for key in ["on_prompt_processing_progress", "on_first_token"]:
+            if key in opts:
+                extra_opts[key] = opts[key]
+                del opts[key]
+        return opts, extra_opts
+
+    def _resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
+        return {"history": [{"role": "user", "content": [{"type": "text", "text": contextInput}]}]}
+
+    def _resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
+        return {
+            "history": [
+                {"role": item.get("role", "user"), "content": [{"type": "text", "text": item.get("content", "")}]}
+                for item in context_input
+            ]
+        }
+
+    @sync_async_decorator(obj_method="create_channel", process_result=predict_internal_process_result)
+    def _predict_internal(
         self,
-        modelSpecifier: ModelSpecifier,
+        model_specifier: ModelSpecifier,
         context: LLMContext,
-        predictionConfigStack: KVConfigStack,
+        prediction_config_stack: KVConfigStack,
         cancel_event: BufferedEvent,
-        extraOpts: LLMPredictionExtraOpts,
+        extra_opts: LLMPredictionExtraOpts,
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
+        extra: Dict | None = None,
     ):
-        finished = False
+        finished = self._port._rpc_complete_event()
 
         def handle_fragments(message: dict):
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
-                if "on_first_token" in extraOpts:
-                    on_first_token = extraOpts.get("on_first_token")
+                if "on_first_token" in extra_opts:
+                    on_first_token = extra_opts.get("on_first_token")
                     if on_first_token is not None:
                         on_first_token()
             elif message_type == "promptProcessingProgress":
-                if "on_prompt_processing_progress" in extraOpts:
-                    on_prompt_processing_progress = extraOpts.get("on_prompt_processing_progress")
+                if "on_prompt_processing_progress" in extra_opts:
+                    on_prompt_processing_progress = extra_opts.get("on_prompt_processing_progress")
                     if on_prompt_processing_progress is not None:
                         on_prompt_processing_progress(message.get("progress", 0.0))
             elif message_type == "success":
                 nonlocal finished
-                finished = True
+                finished.set()
                 on_finished(
                     message.get("stats", {}),
                     message.get("descriptor", {}),
@@ -77,27 +174,31 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
             elif message_type == "error":
                 on_error(Exception(message.get("message", "Unknown error")))
 
+        # TODO does this decorator function properly when internal?
+        # TODO test me!
+        @sync_async_decorator(obj_method="send_channel_message", process_result=lambda x: None)
+        def cancel_send(channel_id):
+            if not finished.is_set():
+                return {"channel_id": channel_id, "payload": {"type": "cancel"}}
+
         print("about to create channel")
 
-        channel_id = await self._port.create_channel(
-            "predict",
-            {
-                "modelSpecifier": modelSpecifier,
+        extra = extra or {}
+        extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
+
+        return {
+            "endpoint": "predict",
+            "creation_parameter": {
+                "modelSpecifier": model_specifier,
                 "context": context,
-                "predictionConfigStack": predictionConfigStack,
+                "predictionConfigStack": prediction_config_stack,
             },
-            handle_fragments,
-        )
+            "handler": handle_fragments,
+            "extra": extra,
+        }
 
-        print("channel nominal")
-
-        def cancel_send():
-            if not finished:
-                self._port.send_channel_message(channel_id, {"type": "cancel"})
-
-        cancel_event.subscribeOnce(cancel_send)
-
-    async def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
+    @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
+    def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts):
         """
         Use the loaded model to predict text.
 
@@ -146,6 +247,11 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
+        if self._port.is_async():
+            from ..communications import OngoingPrediction
+        else:
+            from ..communications.AsyncOngoingPrediction import OngoingPrediction
+        # TODO import one or the other OngoingPrediction *DURING* the function
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         config["stop_strings"] = []
@@ -172,22 +278,22 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
             }
         )
 
-        await self.__predict_internal(
-            self._specifier,
-            self._resolve_completion_context(prompt),
-            {"layers": prediction_layers},
-            cancel_event,
-            extra_opts,
-            lambda fragment: push(fragment),
-            lambda stats, model_info, load_model_config, prediction_config: finished(
+        return {
+            "model_specifier": self._specifier,
+            "context": self._resolve_conversation_context(prompt),
+            "prediction_config_stack": {"layers": prediction_layers},
+            "cancel_event": cancel_event,
+            "extra_opts": extra_opts,
+            "on_fragment": lambda fragment: push(fragment),
+            "on_finished": lambda stats, model_info, load_model_config, prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
-            lambda error: failed(error),
-        )
-        return ongoing_prediction
+            "on_error": lambda error: failed(error),
+            "extra": {"ongoing_prediction": ongoing_prediction},
+        }
 
     @sync_async_decorator(obj_method="predict", process_result=lambda x: x)
-    async def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts) -> OngoingPrediction:
+    def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts):
         """
         Use the loaded model to generate a response based on the given history.
 
@@ -239,7 +345,8 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         """
         return {"context": self._resolve_conversation_context(history), "opts": opts}
 
-    async def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> OngoingPrediction:
+    @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
+    def predict(self, context: LLMContext, opts: LLMPredictionOpts):
         """
         :alpha:
         """
@@ -247,6 +354,10 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
+        if self._port.is_async():
+            from ..communications import OngoingPrediction
+        else:
+            from ..communications.AsyncOngoingPrediction import OngoingPrediction
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         api_override_layer = KVConfigStackLayer(
@@ -259,19 +370,19 @@ class LLMDynamicHandle(DynamicHandle, BaseLLMDynamicHandle):
         print(context)
         print(prediction_layers)
 
-        await self.__predict_internal(
-            self._specifier,
-            context,
-            KVConfigStack(layers=prediction_layers),
-            cancel_event,
-            extra_opts,
-            lambda fragment: push(fragment),
-            lambda stats, model_info, load_model_config, prediction_config: finished(
+        return {
+            "model_specifier": self._specifier,
+            "context": context,
+            "prediction_config_stack": {"layers": prediction_layers},
+            "cancel_event": cancel_event,
+            "extra_opts": extra_opts,
+            "on_fragment": lambda fragment: push(fragment),
+            "on_finished": lambda stats, model_info, load_model_config, prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
-            lambda error: failed(error),
-        )
-        return ongoing_prediction
+            "on_error": lambda error: failed(error),
+            "extra": {"ongoing_prediction": ongoing_prediction},
+        }
 
     @sync_async_decorator(
         obj_method="get_load_config", process_result=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1

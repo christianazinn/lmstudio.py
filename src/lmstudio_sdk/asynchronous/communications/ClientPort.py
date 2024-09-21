@@ -1,6 +1,7 @@
 import json
 import threading
 import websocket
+from typing import Dict
 from .BaseClientPort import BaseClientPort
 
 
@@ -87,12 +88,13 @@ class ClientPort(BaseClientPort):
 
         return True
 
-    def _send_payload(self, payload: dict) -> None:
+    def _send_payload(self, payload: dict, extra: Dict | None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 self._websocket.send(json.dumps(payload))
             else:
                 print("Cannot send payload: websocket not connected")
+            return extra
 
     def _close(self) -> None:
         with self._lock:

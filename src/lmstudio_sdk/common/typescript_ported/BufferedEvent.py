@@ -1,5 +1,6 @@
 from typing import List, Callable
 from threading import Lock
+from asyncio import iscoroutinefunction
 
 
 class BufferedEvent:
@@ -11,10 +12,11 @@ class BufferedEvent:
         with self.lock:
             self.subscribers.append(callback)
 
-    def emit(self):
+    # TODO sync async?????????????????????????????????
+    async def emit(self):
         with self.lock:
             for subscriber in self.subscribers:
-                subscriber()
+                await subscriber() if iscoroutinefunction(subscriber) else subscriber()
             self.subscribers.clear()
 
     @staticmethod

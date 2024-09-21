@@ -15,6 +15,8 @@ TODO: type hints for things like connect, close, call_rpc: abstract methods and 
 TODO: clean up prints and such
 TODO: code hangs on RPC errors
 TODO: fix up imports again!!!
+TODO: make return types Optional for error handling
+TODO: clean up import statements, alphabetize
 
 ABSOLUTELY REMAINS TO BE DONE:
 LLMDynamicHandle

@@ -1,5 +1,6 @@
 import threading
 from abc import ABC
+from asyncio import iscoroutinefunction
 from typing import Dict, Callable, Any
 from ...common import sync_async_decorator
 
@@ -33,9 +34,15 @@ class BaseClientPort(ABC):
             cls.__next_rpc_call_id += 1
         return call_id
 
+    def is_async(self):
+        return iscoroutinefunction(self._send_payload)
+
     # TODO endpoint enum
+    # TODO: this is an absolutely atrocious design pattern
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
-    def create_channel(self, endpoint: str, creation_parameter: Any | None, handler: Callable) -> int:
+    def create_channel(
+        self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: Dict | None = None
+    ) -> int:
         assert self._websocket is not None
         channel_id = self.get_next_channel_id()
         payload = {
@@ -46,7 +53,7 @@ class BaseClientPort(ABC):
         if creation_parameter is not None:
             payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
-        return {"payload": payload}
+        return {"payload": payload, "extra": {"channel_id": channel_id, "extra": extra}}
 
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def send_channel_message(self, channel_id: int, payload: dict):

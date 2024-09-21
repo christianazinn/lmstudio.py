@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import Dict
 from .BaseClientPort import BaseClientPort
 
 import websockets
@@ -84,9 +85,10 @@ class ClientPort(BaseClientPort):
         finally:
             self.running = False
 
-    async def _send_payload(self, payload: dict):
+    async def _send_payload(self, payload: dict, extra: Dict | None = None):
         assert self._websocket is not None
         await self._websocket.send(json.dumps(payload))
+        return extra
 
     def _rpc_complete_event(self):
         return asyncio.Event()
