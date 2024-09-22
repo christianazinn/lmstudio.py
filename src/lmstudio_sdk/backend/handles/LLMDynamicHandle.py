@@ -24,29 +24,16 @@ from .DynamicHandle import DynamicHandle
 
 
 def predict_internal_process_result(extra):
-    print(extra)
     original_extra = extra.get("extra")
     cancel_event = original_extra.get("cancel_event")
     cancel_send = original_extra.get("cancel_send")
     channel_id = extra.get("channel_id")
 
-    print(type(cancel_event))
-    print(type(cancel_send))
-    print(type(channel_id))
-
-    # TODO why on god's green earth is this calling your syncasyncdecorator?
-    # oh because it's not a callback once you pass the function, it's a call... uhhhhhhhhhhhhhhhhh
-    print("subscribing to cancel event")
-    print(cancel_event)
-    print(channel_id)
-    print(cancel_send)
-    # TODO: i think it's a matter of partial async
     cancel_event.subscribeOnce(partial(cancel_send, channel_id))
 
     return original_extra
 
 
-# TODO rework the big boy functions
 class LLMDynamicHandle(DynamicHandle):
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
@@ -136,7 +123,6 @@ class LLMDynamicHandle(DynamicHandle):
             ]
         }
 
-    # TODO: use AbortSignal instead of BufferedEvent (deprecated)
     @sync_async_decorator(obj_method="create_channel", process_result=predict_internal_process_result)
     def _predict_internal(
         self,
@@ -148,7 +134,7 @@ class LLMDynamicHandle(DynamicHandle):
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
-        extra: Dict | None = None,
+        extra: dict | None = None,
     ):
         finished = self._port._rpc_complete_event()
 
@@ -182,11 +168,8 @@ class LLMDynamicHandle(DynamicHandle):
         # TODO fix me! cf. ModelNamespace
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
-            print("in cancel_send!")
             if not finished.is_set():
-                return {"channel_id": channel_id, "payload": {"type": "cancel"}}
-
-        print("about to create channel")
+                return {"channel_id": channel_id, "payload": {"type": "channelSend", "message": {"type": "cancel"}}}
 
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})

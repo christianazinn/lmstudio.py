@@ -19,7 +19,7 @@ class DiagnosticsNamespace:
     def __init__(self, port):
         self._port = port
 
-    @sync_async_decorator(obj_method="_connect", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self):
         pass
 

@@ -1,8 +1,8 @@
 import threading
-from abc import ABC
-from asyncio import iscoroutinefunction
+import asyncio
+from abc import ABC, abstractmethod
 from typing import Dict, Callable, Any
-from ...utils import sync_async_decorator
+from ...utils import sync_async_decorator, PseudoFuture
 
 
 class BaseClientPort(ABC):
@@ -20,6 +20,30 @@ class BaseClientPort(ABC):
         self.channel_handlers: Dict[int, Callable] = {}
         self.rpc_handlers: Dict[int, Callable] = {}
 
+    @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass
+
+    @abstractmethod
+    def _send_payload(self, payload: dict, extra: dict | None):
+        pass
+
+    @abstractmethod
+    def _call_rpc(self, payload: dict, complete: threading.Event | asyncio.Event, extra: dict | None):
+        pass
+
+    @abstractmethod
+    def _rpc_complete_event(self) -> threading.Event | asyncio.Event:
+        pass
+
+    @abstractmethod
+    def promise_event(self) -> asyncio.Future | PseudoFuture:
+        pass
+
     @classmethod
     def get_next_channel_id(cls):
         with cls.__channel_id_lock:
@@ -35,13 +59,13 @@ class BaseClientPort(ABC):
         return call_id
 
     def is_async(self):
-        return iscoroutinefunction(self._send_payload)
+        return asyncio.iscoroutinefunction(self._send_payload)
 
     # TODO endpoint enum
     # TODO: this is an absolutely atrocious design pattern with extra, figure it out
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def create_channel(
-        self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: Dict | None = None
+        self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: dict | None = None
     ) -> int:
         assert self._websocket is not None
         channel_id = self.get_next_channel_id()
@@ -65,7 +89,7 @@ class BaseClientPort(ABC):
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
     @sync_async_decorator(obj_method="_call_rpc", process_result=lambda x: x.get("result", x))
-    def call_rpc(self, endpoint: str, parameter: Any | None, extra: Dict | None = None):
+    def call_rpc(self, endpoint: str, parameter: Any | None, extra: dict | None = None):
         assert self._websocket is not None
         result = {}
 

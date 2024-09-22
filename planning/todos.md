@@ -11,6 +11,6 @@ TODO: type hints for things like connect, close, call_rpc: abstract methods and 
 TODO: code hangs on RPC errors
 TODO: make return types Optional for error handling
 TODO: clean up import statements, alphabetize
-TODO:!fix aborting in llmdynamichandle predict_internal
 TODO: type hints, abstractmethods
 TODO: README
+TODO: sometimes the client will hang on init; race conditions?

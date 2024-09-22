@@ -11,7 +11,7 @@ class SystemNamespace:
     def __init__(self, port: BaseClientPort):
         self._port = port
 
-    @sync_async_decorator(obj_method="_connect", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
         return {}
 

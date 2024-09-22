@@ -1,27 +1,8 @@
 import json
 import threading
 import websocket
-from typing import Dict
 from .BaseClientPort import BaseClientPort
-
-
-class PseudoFuture(threading.Event):
-    def __init__(self):
-        super().__init__()
-
-    def set_result(self, result):
-        self._result = result
-        self.set()
-
-    def set_exception(self, exception):
-        self._exception = exception
-        self.set()
-
-    def result(self):
-        self.wait()
-        if hasattr(self, "_exception"):
-            raise self._exception
-        return self._result
+from ...utils import PseudoFuture
 
 
 class ClientPort(BaseClientPort):
@@ -87,7 +68,7 @@ class ClientPort(BaseClientPort):
         )
         self._connection_event.set()
 
-    def _connect(self) -> bool:
+    def connect(self) -> bool:
         # websocket.enableTrace(True)
         with self._lock:
             self._websocket = websocket.WebSocketApp(
@@ -107,7 +88,7 @@ class ClientPort(BaseClientPort):
 
         return True
 
-    def _send_payload(self, payload: dict, extra: Dict | None):
+    def _send_payload(self, payload: dict, extra: dict | None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 self._websocket.send(json.dumps(payload))
@@ -130,7 +111,7 @@ class ClientPort(BaseClientPort):
         return PseudoFuture()
 
     # TODO type hint for return type
-    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: Dict | None):
+    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None):
         assert self._websocket is not None
         self._send_payload(payload)
         complete.wait()

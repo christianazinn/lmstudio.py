@@ -19,13 +19,14 @@ async def main():
         print("sdfaSs")
 
         # result = await llm_client.getLoadConfig(model_path)
-        model = await llm_client.llm.get("qwen2")
+        model = await llm_client.llm.get("qwsen2")
         # signal = AbortSignal()
         # model = await llm_client.llm.load("lmstudio-community/Qwen2-500M-Instruct-GGUF", {"signal": signal})
         # print("sleeping")
         # await asyncio.sleep(1)
         # await signal.abort()
         # print("should be aborted")
+        # raise Exception("Test")
         # model = await model
         # print("Model loaded:", model)
         # raise Exception("Test")
@@ -33,7 +34,7 @@ async def main():
         result = await model.respond([{"role": "user", "content": "Tell me a very long story."}], {})
         await asyncio.sleep(1)
         await result.cancel()
-        await asyncio.sleep(100)
+        await asyncio.sleep(10)
         raise Exception("Test")
         # async for completion in result:
         #    print(type(completion))

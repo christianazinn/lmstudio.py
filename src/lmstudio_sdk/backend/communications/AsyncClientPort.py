@@ -1,9 +1,8 @@
 import asyncio
 import json
-from typing import Dict
-from .BaseClientPort import BaseClientPort
-
 import websockets
+
+from .BaseClientPort import BaseClientPort
 
 
 class AsyncClientPort(BaseClientPort):
@@ -13,7 +12,7 @@ class AsyncClientPort(BaseClientPort):
         self.running = False
         self.receive_task = None
 
-    async def _connect(self):
+    async def connect(self):
         self._websocket = await websockets.connect(self.uri)
         await self._websocket.send(
             json.dumps(
@@ -68,14 +67,16 @@ class AsyncClientPort(BaseClientPort):
                         del self.channel_handlers[channel_id]
 
                 # RPC endpoints
-                # TODO currently we handle errors two semantic levels up whereas it should be one
-                # implement error handling with the same semantics as channels
+                # TODO: error handling
                 elif data_type == "rpcResult" or data_type == "rpcError":
                     call_id = data.get("callId", -1)
                     # TODO we should pass only the error dict
                     if call_id in self.rpc_handlers:
                         self.rpc_handlers[call_id](data)
                         del self.rpc_handlers[call_id]
+                    # how to pass error to caller without interrupting backend flow?
+                    if data_type == "rpcError":
+                        print("Error in RPC call:", data)
         except AssertionError:
             print("WebSocket connection not established in receive_messages: this should never happen?")
         except websockets.ConnectionClosedOK:
@@ -85,7 +86,7 @@ class AsyncClientPort(BaseClientPort):
         finally:
             self.running = False
 
-    async def _send_payload(self, payload: dict, extra: Dict | None = None):
+    async def _send_payload(self, payload: dict, extra: dict | None = None):
         assert self._websocket is not None
         await self._websocket.send(json.dumps(payload))
         return extra
@@ -96,7 +97,7 @@ class AsyncClientPort(BaseClientPort):
     def promise_event(self):
         return asyncio.Future()
 
-    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict, extra: Dict | None = None):
+    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict, extra: dict | None = None):
         assert self._websocket is not None
         await self._send_payload(payload)
         await complete.wait()

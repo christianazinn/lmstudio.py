@@ -18,7 +18,8 @@ class BufferedEvent:
         with self.lock:
             print("lock acquired")
             for subscriber in self.subscribers:
-                await subscriber() if iscoroutinefunction(subscriber) else subscriber()
+                await subscriber()
+            #    await subscriber() if iscoroutinefunction(subscriber) else subscriber()
             print("looped")
             self.subscribers.clear()
 

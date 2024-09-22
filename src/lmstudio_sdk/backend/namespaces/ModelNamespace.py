@@ -128,7 +128,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             self._port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
 
-    @sync_async_decorator(obj_method="_connect", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
         pass
 
@@ -220,7 +220,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
             reject(Exception("Model loading was cancelled"))
-            return {"channel_id": channel_id, "payload": {"type": "cancel"}}
+            return {"channel_id": channel_id, "payload": {"type": "channelSend", "message": {"type": "cancel"}}}
 
         extra = {"is_async": self._port.is_async(), "promise": promise}
         if opts and "signal" in opts:
