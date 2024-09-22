@@ -11,5 +11,6 @@ TODO: code hangs on RPC errors
 TODO: make return types Optional for error handling
 TODO: clean up import statements, alphabetize
 TODO: type hints, abstractmethods
-TODO: README
+TODO: README + docs
 TODO: sometimes the client will hang on init; race conditions?
+TODO: logging, error handling, import alphabetization for /backend/communications, handles, namespaces

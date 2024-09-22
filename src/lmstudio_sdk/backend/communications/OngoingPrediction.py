@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional, Any, Callable, TypeVar, Generic, Iterator
+from typing import Any, Callable, Generic, Iterator, List, Optional, TypeVar
 from queue import Queue
 from threading import Event
 from abc import ABC, abstractmethod

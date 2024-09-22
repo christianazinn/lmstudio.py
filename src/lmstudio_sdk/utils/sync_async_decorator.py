@@ -1,9 +1,10 @@
 import asyncio
 import functools
-import logging
+import json
 from typing import Any, Awaitable, Callable, TypeVar, Tuple, Union
+from .logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 T = TypeVar("T")
@@ -37,6 +38,15 @@ class AsyncCallable:
 def is_async_callable(obj):
     """Checks whether we need to await the target."""
     return asyncio.iscoroutinefunction(obj) or isinstance(obj, AsyncCallable)
+
+
+# TODO: can you change indent on the fly?
+def pretty_print(obj):
+    """Pretty prints the object."""
+    try:
+        return json.dumps(obj, indent=2)
+    except Exception:
+        return obj
 
 
 def sync_async_decorator(
@@ -77,8 +87,6 @@ def sync_async_decorator(
             if not isinstance(method_args, dict):
                 method_args = {}
 
-            logger.debug(f"Async wrapper for {target_method} received method args: {method_args}")
-
             # handle nested decorated calls
             if hasattr(target_method, "is_sync_async_decorated"):
                 result = await target_method(**method_args)
@@ -89,7 +97,7 @@ def sync_async_decorator(
             else:
                 result = target_method(**method_args)
 
-            logger.debug(f"Async wrapper for {target_method} received result: {result}")
+            logger.wrapper(f"Async wrapper for {target_method} received result:\n{pretty_print(result)}")
 
             return process_result(result)
 
@@ -101,8 +109,6 @@ def sync_async_decorator(
             if not isinstance(method_args, dict):
                 method_args = {}
 
-            logger.debug(f"Sync wrapper for {target_method} received method args: {method_args}")
-
             # handle nested decorated calls
             if hasattr(target_method, "is_sync_async_decorated"):
                 result = target_method(**method_args)
@@ -113,7 +119,7 @@ def sync_async_decorator(
             else:
                 result = target_method(**method_args)
 
-            logger.debug(f"Sync wrapper for {target_method} received result: {result}")
+            logger.wrapper(f"Sync wrapper for {target_method} received result:\n{pretty_print(result)}")
 
             return process_result(result)
 
@@ -125,9 +131,11 @@ def sync_async_decorator(
 
             # determine whether to wrap in async or sync based on the target method
             if is_async_callable(target_method) or hasattr(target_method, "is_sync_async_decorated"):
-                logger.debug(f"Calling async method '{target_method}' with args {args} and kwargs {kwargs}")
+                logger.wrapper(
+                    f"Calling async method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}"
+                )
                 return AsyncCallable(lambda: async_wrapper(self, target_method, *args, **kwargs))
-            logger.debug(f"Calling sync method '{target_method}' with args {args} and kwargs {kwargs}")
+            logger.wrapper(f"Calling sync method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}")
             return sync_wrapper(self, target_method, *args, **kwargs)
 
         wrapper.is_sync_async_decorated = True

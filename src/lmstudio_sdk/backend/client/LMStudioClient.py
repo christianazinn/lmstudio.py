@@ -1,12 +1,11 @@
-import logging
 from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 
-from ...utils import generate_random_base64
+from ...utils import generate_random_base64, get_logger
 from ..namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LMStudioClient(ABC):
@@ -88,7 +87,9 @@ class LMStudioClient(ABC):
             from ..communications import AsyncClientPort as ClientPort
         else:
             from ..communications import ClientPort
-        logger.info(f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}")
+        logger.info(
+            f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
+        )
 
         # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints
         llm_port = ClientPort(self.base_url, "llm", self.client_identifier, self.__client_passkey)

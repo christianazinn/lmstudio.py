@@ -1,13 +1,12 @@
 import asyncio
 import json
-import logging
 from http.client import HTTPConnection
 
-from ...utils import lms_default_ports
+from ...utils import lms_default_ports, get_logger
 from .LMStudioClient import LMStudioClient
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AsyncLMStudioClient(LMStudioClient):
@@ -81,6 +80,6 @@ class AsyncLMStudioClient(LMStudioClient):
         return self
 
     async def close(self):
-        logger.info("Closing connection to LM Studio server...")
+        logger.info(f"Closing connection to LM Studio server at {self.base_url}...")
         await asyncio.gather(self.llm.close(), self.embedding.close(), self.system.close(), self.diagnostics.close())
         logger.info("Closed connection to LM Studio server.")

@@ -169,7 +169,7 @@ class LLMDynamicHandle(DynamicHandle):
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
             if not finished.is_set():
-                return {"channel_id": channel_id, "payload": {"type": "channelSend", "message": {"type": "cancel"}}}
+                return {"channel_id": channel_id, "message": {"type": "cancel"}}
 
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})

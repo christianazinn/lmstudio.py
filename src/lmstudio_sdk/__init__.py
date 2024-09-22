@@ -65,7 +65,14 @@ from .utils import (
     sync_async_decorator,
     lms_default_ports,
     generate_random_base64,
+    get_logger,
+    RECV,
+    SEND,
+    WRAPPER,
+    WEBSOCKET,
 )
+
+logger = get_logger(__name__)
 
 __all__ = [
     "AsyncLMStudioClient",
@@ -130,4 +137,9 @@ __all__ = [
     "sync_async_decorator",
     "lms_default_ports",
     "generate_random_base64",
+    "logger",
+    "RECV",
+    "SEND",
+    "WRAPPER",
+    "WEBSOCKET",
 ]
