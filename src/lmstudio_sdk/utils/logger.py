@@ -1,9 +1,20 @@
 import logging
 
+
 WRAPPER = 5
+"""
+Debug level for tracing calls, parameters, and return values for async/sync decorated wrapped functions.
+The most verbose debug level offered - will log everything.
+"""
+
 RECV = 7
+"""Debug level for sent and received packets from the LM Studio server."""
+
 SEND = 8
+"""Debug level for sent packets to the LM Studio server"""
+
 WEBSOCKET = 9
+"""Debug level for WebSocket connection events."""
 
 logging.addLevelName(WRAPPER, "WRAPPER")
 logging.addLevelName(RECV, "RECV")

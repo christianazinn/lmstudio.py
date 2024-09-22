@@ -2,7 +2,7 @@ import json
 import threading
 import websocket
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, PseudoFuture
+from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture
 
 
 logger = get_logger(__name__)
@@ -36,7 +36,7 @@ class ClientPort(BaseClientPort):
         elif data_type == "channelError":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
-                self.channel_handlers[channel_id](data.get("error", {}))
+                self.channel_handlers[channel_id](data)
                 del self.channel_handlers[channel_id]
 
         # RPC endpoints
@@ -48,8 +48,6 @@ class ClientPort(BaseClientPort):
             if call_id in self.rpc_handlers:
                 self.rpc_handlers[call_id](data)
                 del self.rpc_handlers[call_id]
-            if data_type == "rpcError":
-                logger.error("Error in RPC call:", data)
 
     def on_error(self, ws, error):
         # TODO I'm pretty sure this is a WebSocket error not a message error
@@ -127,6 +125,13 @@ class ClientPort(BaseClientPort):
             f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
         )
         complete.wait()
+
+        if "error" in result:
+            logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
+            raise ValueError(
+                f"Error in RPC call: {result.get('error').get('title', 'Unknown error - enable RECV level logging')}"
+            )
+
         result = result.get("result", result)
         result.update({"extra": extra})
         return result

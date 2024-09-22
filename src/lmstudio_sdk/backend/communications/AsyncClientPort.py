@@ -3,7 +3,7 @@ import json
 import websockets
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print
+from ...utils import get_logger, pretty_print, pretty_print_error
 
 
 logger = get_logger(__name__)
@@ -36,13 +36,14 @@ class AsyncClientPort(BaseClientPort):
     async def close(self):
         self.running = False
         if self._websocket:
-            logger.websocket(f"Closing WebSocket connection on async port {self.endpoint}.")
+            logger.websocket(f"Closing WebSocket connection on async port {self.endpoint}...")
             await self._websocket.close()
             logger.websocket(f"WebSocket connection closed to {self.endpoint}.")
         if self.receive_task:
             try:
-                logger.websocket(f"Waiting for receive task to time out on async port {self.endpoint}.")
+                logger.websocket(f"Waiting for receive task to time out on async port {self.endpoint}...")
                 await asyncio.wait_for(self.receive_task, timeout=5.0)
+                logger.websocket(f"Receive task timed out on async port {self.endpoint}.")
             except asyncio.TimeoutError:
                 logger.error(f"Receive task did not complete in time on async port {self.endpoint}!")
 
@@ -61,11 +62,10 @@ class AsyncClientPort(BaseClientPort):
                     continue
 
                 # channel endpoints
-                # TODO: error handling
                 if data_type == "channelSend":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        self.channel_handlers[channel_id](data.get("message", {}))
+                        self.channel_handlers[channel_id](data.get("message", data))
                 elif data_type == "channelClose":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
@@ -73,20 +73,16 @@ class AsyncClientPort(BaseClientPort):
                 elif data_type == "channelError":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        self.channel_handlers[channel_id](data.get("error", {}))
+                        self.channel_handlers[channel_id](data)
                         del self.channel_handlers[channel_id]
 
                 # RPC endpoints
                 # TODO: error handling
                 elif data_type == "rpcResult" or data_type == "rpcError":
                     call_id = data.get("callId", -1)
-                    # TODO we should pass only the error dict
                     if call_id in self.rpc_handlers:
                         self.rpc_handlers[call_id](data)
                         del self.rpc_handlers[call_id]
-                    # how to pass error to caller without interrupting backend flow?
-                    if data_type == "rpcError":
-                        logger.error("Error in RPC call:", data)
         except AssertionError:
             logger.error(
                 f"WebSocket connection to {self.uri} not established in receive_messages: this should never happen?"
@@ -118,6 +114,13 @@ class AsyncClientPort(BaseClientPort):
             f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
         )
         await complete.wait()
+
+        if "error" in result:
+            logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
+            raise ValueError(
+                f"Error in RPC call: {result.get('error').get('title', 'Unknown error - enable RECV level logging')}"
+            )
+
         result = result.get("result", result)
         result.update({"extra": extra})
         return result

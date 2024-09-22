@@ -1,8 +1,11 @@
 from typing import List
 
 from ...dataclasses import find_key_in_kv_config
-from ...utils import sync_async_decorator
+from ...utils import get_logger, sync_async_decorator
 from .DynamicHandle import DynamicHandle
+
+
+logger = get_logger(__name__)
 
 
 class EmbeddingDynamicHandle(DynamicHandle):
@@ -26,7 +29,9 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        assert isinstance(input_string, str)
+        if not isinstance(input_string, str):
+            logger.error(f"embed_string: input_string must be a string, got {type(input_string)}")
+            raise ValueError("Input string must be a string.")
         return {"endpoint": "embedString", "parameter": {"specifier": self._specifier, "inputString": input_string}}
 
     @sync_async_decorator(
@@ -61,5 +66,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to tokenize.
         :return: A list of integers representing the tokenized string.
         """
-        assert isinstance(input_string, str)
+        if not isinstance(input_string, str):
+            logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
+            raise ValueError("Input string must be a string.")
         return {"endpoint": "tokenize", "parameter": {"specifier": self._specifier, "inputString": input_string}}

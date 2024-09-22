@@ -73,6 +73,9 @@ from .utils import (
 )
 
 logger = get_logger(__name__)
+"""
+The logger for the lmstudio_sdk package.
+"""
 
 __all__ = [
     "AsyncLMStudioClient",

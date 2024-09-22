@@ -2,7 +2,7 @@ from typing import List
 
 from ...dataclasses import DownloadedModel
 from ...utils import sync_async_decorator
-from ..communications.BaseClientPort import BaseClientPort
+from ..communications import BaseClientPort
 
 
 class SystemNamespace:

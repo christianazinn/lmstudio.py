@@ -44,7 +44,16 @@ def is_async_callable(obj):
 def pretty_print(obj):
     """Pretty prints the object."""
     try:
-        return json.dumps(obj, indent=2)
+        return json.dumps(obj, indent=2, default=lambda x: str(x))
+    except Exception as e:
+        logger.error(f"Failed to pretty print object: {e}")
+        return obj
+
+
+def pretty_print_error(obj):
+    try:
+        obj["stack"] = obj.get("stack", "").split("\n")
+        return pretty_print(obj)
     except Exception:
         return obj
 

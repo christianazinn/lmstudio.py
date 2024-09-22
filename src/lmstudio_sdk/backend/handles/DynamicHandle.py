@@ -1,5 +1,5 @@
 from typing import Optional
-from ...dataclasses import ModelDescriptor, KVConfig, ModelSpecifier
+from ...dataclasses import KVConfig, ModelDescriptor, ModelSpecifier
 from ...utils import sync_async_decorator
 from ..communications import BaseClientPort
 

@@ -82,7 +82,9 @@ class BaseClientPort(ABC):
             payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
 
-        logger.debug(f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging.")
+        logger.debug(
+            f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
+        )
 
         return {"payload": payload, "extra": {"channel_id": channel_id, "extra": extra}}
 
