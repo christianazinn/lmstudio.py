@@ -139,7 +139,8 @@ def sync_async_decorator(
             target_method = get_target_and_method(self, obj_method)
 
             # determine whether to wrap in async or sync based on the target method
-            if is_async_callable(target_method) or hasattr(target_method, "is_sync_async_decorated"):
+            # TODO CRITICAL: this either works for nested async calls or for sync calls and never the other!!!
+            if is_async_callable(target_method):  # or hasattr(target_method, "is_sync_async_decorated"):
                 logger.wrapper(
                     f"Calling async method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}"
                 )
@@ -147,7 +148,7 @@ def sync_async_decorator(
             logger.wrapper(f"Calling sync method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}")
             return sync_wrapper(self, target_method, *args, **kwargs)
 
-        wrapper.is_sync_async_decorated = True
+        # wrapper.is_sync_async_decorated = True
         return wrapper
 
     return decorator

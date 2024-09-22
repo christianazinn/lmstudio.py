@@ -91,7 +91,7 @@ class ClientPort(BaseClientPort):
         logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
-    def _send_payload(self, payload: dict, extra: dict | None):
+    def _send_payload(self, payload: dict, extra: dict | None = None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
@@ -118,7 +118,7 @@ class ClientPort(BaseClientPort):
         return PseudoFuture()
 
     # TODO type hint for return type
-    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None):
+    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None = None):
         assert self._websocket is not None
         self._send_payload(payload)
         logger.debug(
