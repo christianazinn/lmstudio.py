@@ -15,7 +15,14 @@ from ...dataclasses import (
     ModelQuery,
     ModelSpecifier,
 )
-from ...utils import ChannelError, get_logger, pretty_print, pretty_print_error, sync_async_decorator
+from ...utils import (
+    ChannelError,
+    get_logger,
+    number_to_checkbox_numeric,
+    pretty_print,
+    pretty_print_error,
+    sync_async_decorator,
+)
 from ..handles import EmbeddingDynamicHandle, EmbeddingSpecificModel, DynamicHandle, LLMDynamicHandle, LLMSpecificModel
 from ..communications import BaseClientPort
 
@@ -362,18 +369,19 @@ class EmbeddingNamespace(
     _default_load_config: EmbeddingLoadModelConfig = {}
 
     def load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
-        return convert_dict_to_kv_config(
-            {
-                "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
-                "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
-                "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
-                "embedding.load.contextLength": config.get("context_length"),
-                "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
-                "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
-                "llama.keepModelInMemory": config.get("keep_model_in_memory"),
-                "llama.tryMmap": config.get("try_mmap"),
-            }
-        )
+        fields = {
+            "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
+            "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
+            "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
+            "embedding.load.contextLength": config.get("context_length"),
+            "llama.keepModelInMemory": config.get("keep_model_in_memory"),
+            "llama.tryMmap": config.get("try_mmap"),
+        }
+        if "rope_frequency_base" in config:
+            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(config.get("rope_frequency_base"), 0, 0)
+        if "rope_frequency_scale" in config:
+            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(config.get("rope_frequency_scale"), 0, 0)
+        return convert_dict_to_kv_config(fields)
 
     def create_domain_specific_model(
         self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
@@ -395,10 +403,7 @@ class LLMNamespace(
             "llm.load.contextLength": config.get("context_length"),
             "llama.evalBatchSize": config.get("eval_batch_size"),
             "llama.flashAttention": config.get("flash_attention"),
-            "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
-            "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
             "llama.keepModelInMemory": config.get("keep_model_in_memory"),
-            "seed": config.get("seed"),
             "llama.useFp16ForKVCache": config.get("use_fp16_for_kv_cache"),
             "llama.tryMmap": config.get("try_mmap"),
             "numExperts": config.get("num_experts"),
@@ -412,6 +417,13 @@ class LLMNamespace(
                 fields["llama.acceleration.offloadRatio"] = gpu_offload.get("ratio")
                 fields["llama.acceleration.mainGpu"] = gpu_offload.get("main_gpu")
                 fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensor_split")
+
+        if "rope_frequency_base" in config:
+            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(config.get("rope_frequency_base"), 0, 0)
+        if "rope_frequency_scale" in config:
+            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(config.get("rope_frequency_scale"), 0, 0)
+        if "seed" in config:
+            fields["llama.seed"] = number_to_checkbox_numeric(config.get("seed"), -1, 0)
         return convert_dict_to_kv_config(fields)
 
     def create_domain_specific_model(

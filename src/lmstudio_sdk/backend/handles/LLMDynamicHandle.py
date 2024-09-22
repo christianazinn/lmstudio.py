@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, Union, Tuple
+from typing import Callable, List, Tuple
 from functools import partial
 
 from ...dataclasses import (
@@ -19,7 +19,14 @@ from ...dataclasses import (
     ModelDescriptor,
     ModelSpecifier,
 )
-from ...utils import BufferedEvent, ChannelError, get_logger, pretty_print_error, sync_async_decorator
+from ...utils import (
+    BufferedEvent,
+    ChannelError,
+    get_logger,
+    number_to_checkbox_numeric,
+    pretty_print_error,
+    sync_async_decorator,
+)
 from .DynamicHandle import DynamicHandle
 
 
@@ -52,16 +59,6 @@ class LLMDynamicHandle(DynamicHandle):
 
     _internal_kv_config_stack = KVConfigStack(layers=[])
 
-    def number_to_checkbox_numeric(
-        self, value: Optional[float], unchecked_value: float, value_when_unchecked: float
-    ) -> Optional[Dict[str, Union[bool, float]]]:
-        if value is None:
-            return None
-        if value == unchecked_value:
-            return {"checked": False, "value": value_when_unchecked}
-        if value != unchecked_value:
-            return {"checked": True, "value": value}
-
     def prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
         fields = []
         if prediction_config is not None:
@@ -79,28 +76,28 @@ class LLMDynamicHandle(DynamicHandle):
                 fields.append(
                     {
                         "key": "max_predicted_tokens",
-                        "value": self.number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
+                        "value": number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
                     }
                 )
             if "repeat_penalty" in prediction_config:
                 fields.append(
                     {
                         "key": "repeat_penalty",
-                        "value": self.number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
+                        "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
                     }
                 )
             if "min_p_sampling" in prediction_config:
                 fields.append(
                     {
                         "key": "min_p_sampling",
-                        "value": self.number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
+                        "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
                     }
                 )
             if "top_p_sampling" in prediction_config:
                 fields.append(
                     {
                         "key": "top_p_sampling",
-                        "value": self.number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
+                        "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
                     }
                 )
             if "cpu_threads" in prediction_config:
