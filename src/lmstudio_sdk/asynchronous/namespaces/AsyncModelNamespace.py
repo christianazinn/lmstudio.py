@@ -1,6 +1,7 @@
 from typing import List, Union, Generic, TypeVar
 from abc import ABC, abstractmethod
 import asyncio
+import functools
 
 from ...common import (
     ModelDescriptor,
@@ -300,21 +301,34 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
     def unstable_get_any(self) -> TSpecificModel:
         return {"query": {}}
 
-    # TODO slightly more complicated reconciliation
-    async def unstable_get_or_load(
+    # TODO slightly more complicated reconciliation: fix me!
+    def unstable_get_or_load(
         self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
     ) -> TSpecificModel:
         """
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.
         """
-        try:
-            model = await self.get({"identifier": identifier})
-            return model
-        except Exception:
-            if load_opts:
-                load_opts["identifier"] = identifier
-            return await self.load(path, load_opts)
+        if load_opts:
+            load_opts.identifier = identifier
+
+        # bad: manually implementing async/sync reconciliation
+        async def async_get_or_load():
+            try:
+                return await self.get({"identifier": identifier})
+            except Exception:
+                return await self.load(path, load_opts)
+
+        def sync_get_or_load():
+            try:
+                return self.get({"identifier": identifier})
+            except Exception:
+                return self.load(path, load_opts)
+
+        if self._port.is_async():
+            return async_get_or_load
+        else:
+            return sync_get_or_load
 
 
 # TODO custom ports with type locks
