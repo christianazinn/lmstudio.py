@@ -1,22 +1,26 @@
-from typing import List, Union, Generic, TypeVar
 from abc import ABC, abstractmethod
 from functools import partial
+from time import time
+from typing import Generic, List, TypeVar, Union
 
 from ...dataclasses import (
-    ModelDescriptor,
     BaseLoadModelOpts,
-    ModelQuery,
-    EmbeddingLoadModelConfig,
-    LLMLoadModelConfig,
-    ModelSpecifier,
-    KVConfigLayerName,
-    ModelDomainType,
-    KVConfig,
     convert_dict_to_kv_config,
+    EmbeddingLoadModelConfig,
+    KVConfig,
+    KVConfigLayerName,
+    LLMLoadModelConfig,
+    ModelDescriptor,
+    ModelDomainType,
+    ModelQuery,
+    ModelSpecifier,
 )
-from ...utils import sync_async_decorator
-from ..handles import EmbeddingDynamicHandle, LLMDynamicHandle, EmbeddingSpecificModel, LLMSpecificModel, DynamicHandle
+from ...utils import ChannelError, get_logger, pretty_print, pretty_print_error, sync_async_decorator
+from ..handles import EmbeddingDynamicHandle, EmbeddingSpecificModel, DynamicHandle, LLMDynamicHandle, LLMSpecificModel
 from ..communications import BaseClientPort
+
+
+logger = get_logger(__name__)
 
 
 TClientPort = TypeVar("TClientPort", bound="BaseClientPort")
@@ -29,14 +33,13 @@ def load_process_result(extra):
     channel_id = extra.get("channel_id")
     extra = extra.get("extra")
     if "signal" in extra:
-        print("hello", channel_id)
         extra.get("signal").add_listener(partial(extra.get("cancel_send"), channel_id))
     if extra.get("is_async"):
         return extra.get("promise")
+    # handling PseudoFuture
     return extra.get("promise").result()
 
 
-# TODO ughhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
     """
     Abstract namespace for namespaces that deal with models.
@@ -114,6 +117,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         if "path" in query:
             path = query.get("path")
             if path is not None and "\\" in path:
+                logger.error(f"Model path should not contain backslashes, received: {path}")
                 raise ValueError("Model path should not contain backslashes.")
 
         return self.create_domain_dynamic_handle(self._port, {"type": "query", "query": query})
@@ -177,12 +181,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-    # TODO slightly more complicated reconciliation with return types
     @sync_async_decorator(obj_method="create_channel", process_result=load_process_result)
     def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
-        # TODO logging
         promise = self._port.promise_event()
         full_path: str = path
+        start_time: float = 0
 
         def resolve(value):
             promise.set_result(value)
@@ -191,15 +194,17 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             promise.set_exception(error)
 
         def handle_message(message):
+            nonlocal full_path
+            nonlocal start_time
             message_type = message.get("type", "")
             if message_type == "resolved":
-                nonlocal full_path
                 full_path = message.get("fullPath")
                 if message.get("ambiguous", False):
-                    # FIXME this should be a warning
-                    print(f"Multiple models found for {path}. Using the first one.")
-                # TODO there are a bunch of logging steps here but you don't have a logger
+                    logger.warning(f"Multiple models found for {path}. Using the first one.")
+                logger.debug(f"Start loading model {full_path}...")
+                start_time = time()
             elif message_type == "success":
+                logger.debug(f"Model {full_path} loaded in {time() - start_time:.3f}s.")
                 resolve(
                     self.create_domain_specific_model(
                         self._port,
@@ -209,26 +214,27 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 )
             elif message_type == "progress":
                 progress = message.get("progress")
+                logger.debug(f"Model {full_path} loading progress: {progress}%.")
                 if opts and "on_progress" in opts:
                     on_progress = opts.get("on_progress")
                     if on_progress is not None:
                         on_progress(progress)
-            elif message_type == "error":
-                reject(Exception(message.get("message", "Unknown error")))
+            elif message_type == "channelError":
+                logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
+                reject(ChannelError(message.get("error").get("title")))
 
-        # TODO this never gets called
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
-            reject(Exception("Model loading was cancelled"))
-            return {"channel_id": channel_id, "payload": {"type": "channelSend", "message": {"type": "cancel"}}}
+            logger.info(f"Attempting to send cancel message to channel {channel_id}.")
+            # we choose not to reject with an Exception because the user should not have to handle it
+            resolve(None)
+            return {"channel_id": channel_id, "message": {"type": "cancel"}}
 
         extra = {"is_async": self._port.is_async(), "promise": promise}
         if opts and "signal" in opts:
             signal = opts.get("signal")
             if signal is not None:
                 extra.update({"signal": signal, "cancel_send": cancel_send})
-
-        print("about to pass to channel creation")
 
         return {
             "endpoint": "loadModel",
@@ -258,7 +264,9 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
 
         :param identifier: The identifier of the model to unload.
         """
-        assert isinstance(identifier, str)
+        if not isinstance(identifier, str):
+            logger.error(f"unload: identifier must be a string, got {type(identifier)}")
+            raise ValueError("Identifier must be a string.")
         return {"endpoint": "unloadModel", "parameter": {"identifier": identifier}}
 
     @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
@@ -312,6 +320,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
 
         def process_get_result(x):
             if not x or x is None:
+                logger.error(f"Model not found for query: {pretty_print(query)}")
                 raise Exception("Model not found")
             return self.create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
 
@@ -336,8 +345,10 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         parallel. Do not use in production yet.
         """
         try:
+            logger.debug(f"Attempting to get model with identifier {identifier}.")
             return self.get({"identifier": identifier})
         except Exception:
+            logger.debug(f"Model with identifier {identifier} not found. Attempting to load model from path {path}.")
             if load_opts:
                 load_opts["identifier"] = identifier
             return self.load(path, load_opts)
@@ -356,7 +367,6 @@ class EmbeddingNamespace(
                 "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
                 "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
                 "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
-                # TODO don't know if you need the embedding.load
                 "embedding.load.contextLength": config.get("context_length"),
                 "llama.ropeFrequencyBase": config.get("rope_frequency_base"),
                 "llama.ropeFrequencyScale": config.get("rope_frequency_scale"),
@@ -381,9 +391,7 @@ class LLMNamespace(
     _default_load_config: LLMLoadModelConfig = {}
 
     def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
-        # why is this implemented like this???
         fields = {
-            # TODO don't know if you need the llm.load
             "llm.load.contextLength": config.get("context_length"),
             "llama.evalBatchSize": config.get("eval_batch_size"),
             "llama.flashAttention": config.get("flash_attention"),

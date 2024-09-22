@@ -1,4 +1,4 @@
-from typing import Literal, Callable, TypedDict
+from typing import Callable, Literal, TypedDict
 
 from ...utils import sync_async_decorator
 

@@ -1,20 +1,15 @@
-import functools
 import asyncio
-from typing import Callable, TypeVar, Union, Any, Awaitable, Tuple
+import functools
+import json
+from typing import Any, Awaitable, Callable, TypeVar, Tuple, Union
+from .logger import get_logger
+
+logger = get_logger(__name__)
 
 
 T = TypeVar("T")
 
 
-# TODO: this file contains possibly the worst hack I have ever written
-# document this for the next person who has to deal with it
-# I'm sorry
-
-
-# this whole hack is almost workaroundable in most places (RPC calls)
-# because you could just return the call to self._port.send_rpc, and then
-# the user awaiting it would await on the RPC call... but then we don't
-# get to postprocess the result. damn it!
 class AsyncCallable:
     """
     Because functions are declared with def in this design pattern, asyncio.iscoroutinefunction
@@ -43,6 +38,24 @@ class AsyncCallable:
 def is_async_callable(obj):
     """Checks whether we need to await the target."""
     return asyncio.iscoroutinefunction(obj) or isinstance(obj, AsyncCallable)
+
+
+# TODO: can you change indent on the fly?
+def pretty_print(obj):
+    """Pretty prints the object."""
+    try:
+        return json.dumps(obj, indent=2, default=lambda x: str(x))
+    except Exception as e:
+        logger.error(f"Failed to pretty print object: {e}")
+        return obj
+
+
+def pretty_print_error(obj):
+    try:
+        obj["stack"] = obj.get("stack", "").split("\n")
+        return pretty_print(obj)
+    except Exception:
+        return obj
 
 
 def sync_async_decorator(
@@ -93,9 +106,8 @@ def sync_async_decorator(
             else:
                 result = target_method(**method_args)
 
-            # processor can in theory be async but really try not to do this
-            if is_async_callable(process_result):
-                return await process_result(result)
+            logger.wrapper(f"Async wrapper for {target_method} received result:\n{pretty_print(result)}")
+
             return process_result(result)
 
         # sync wrapper
@@ -116,6 +128,8 @@ def sync_async_decorator(
             else:
                 result = target_method(**method_args)
 
+            logger.wrapper(f"Sync wrapper for {target_method} received result:\n{pretty_print(result)}")
+
             return process_result(result)
 
         # the wrapper proper
@@ -126,7 +140,11 @@ def sync_async_decorator(
 
             # determine whether to wrap in async or sync based on the target method
             if is_async_callable(target_method) or hasattr(target_method, "is_sync_async_decorated"):
+                logger.wrapper(
+                    f"Calling async method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}"
+                )
                 return AsyncCallable(lambda: async_wrapper(self, target_method, *args, **kwargs))
+            logger.wrapper(f"Calling sync method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}")
             return sync_wrapper(self, target_method, *args, **kwargs)
 
         wrapper.is_sync_async_decorated = True

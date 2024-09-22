@@ -1,4 +1,4 @@
-from typing import List, Callable, Optional, Dict, Union, Tuple
+from typing import Callable, Dict, List, Optional, Union, Tuple
 from functools import partial
 
 from ...dataclasses import (
@@ -12,15 +12,18 @@ from ...dataclasses import (
     LLMCompletionContextInput,
     LLMContext,
     LLMConversationContextInput,
+    LLMPredictionConfig,
     LLMPredictionExtraOpts,
     LLMPredictionOpts,
     LLMPredictionStats,
     ModelDescriptor,
     ModelSpecifier,
-    LLMPredictionConfig,
 )
-from ...utils import sync_async_decorator, BufferedEvent
+from ...utils import BufferedEvent, ChannelError, get_logger, pretty_print_error, sync_async_decorator
 from .DynamicHandle import DynamicHandle
+
+
+logger = get_logger(__name__)
 
 
 def predict_internal_process_result(extra):
@@ -137,16 +140,22 @@ class LLMDynamicHandle(DynamicHandle):
         extra: dict | None = None,
     ):
         finished = self._port._rpc_complete_event()
+        is_first_token = True
 
         def handle_fragments(message: dict):
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
-                if "on_first_token" in extra_opts:
-                    on_first_token = extra_opts.get("on_first_token")
-                    if on_first_token is not None:
-                        on_first_token()
+                nonlocal is_first_token
+                if is_first_token:
+                    is_first_token = False
+                    logger.debug("First token received.")
+                    if "on_first_token" in extra_opts:
+                        on_first_token = extra_opts.get("on_first_token")
+                        if on_first_token is not None:
+                            on_first_token()
             elif message_type == "promptProcessingProgress":
+                logger.debug(f"Processing prompt, progress: {message.get('progress', 0.0)}")
                 if "on_prompt_processing_progress" in extra_opts:
                     on_prompt_processing_progress = extra_opts.get("on_prompt_processing_progress")
                     if on_prompt_processing_progress is not None:
@@ -154,22 +163,25 @@ class LLMDynamicHandle(DynamicHandle):
             elif message_type == "success":
                 nonlocal finished
                 finished.set()
+                logger.debug("Prediction completed successfully.")
                 on_finished(
                     message.get("stats", {}),
                     message.get("descriptor", {}),
                     message.get("loadConfig", {}),
                     message.get("predictionConfig", {}),
                 )
-            # FIXME this probably doesn't work
-            elif message_type == "error":
-                on_error(Exception(message.get("message", "Unknown error")))
+            elif message_type == "channelError":
+                logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
+                on_error(ChannelError(message.get("error").get("title")))
 
         # TODO does this decorator function properly when internal?
-        # TODO fix me! cf. ModelNamespace
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
+            logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             if not finished.is_set():
-                return {"channel_id": channel_id, "payload": {"type": "channelSend", "message": {"type": "cancel"}}}
+                return {"channel_id": channel_id, "message": {"type": "cancel"}}
+            # HACK side effect of the decorator, easier to just eat an extra debug message
+            return {"channel_id": None, "message": None}
 
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
@@ -237,10 +249,8 @@ class LLMDynamicHandle(DynamicHandle):
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         if self._port.is_async():
-            print("hi i'm async")
             from ..communications import AsyncOngoingPrediction as OngoingPrediction
         else:
-            print("hi i'm sync")
             from ..communications import OngoingPrediction
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
@@ -337,10 +347,6 @@ class LLMDynamicHandle(DynamicHandle):
 
     @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
     def predict(self, context: LLMContext, opts: LLMPredictionOpts):
-        """
-        :alpha:
-        """
-
         config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
@@ -392,10 +398,14 @@ class LLMDynamicHandle(DynamicHandle):
 
     @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokens", [-1]))
     def unstable_tokenize(self, input_string: str) -> List[int]:
-        assert isinstance(input_string, str)
+        if not isinstance(input_string, str):
+            logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
+            raise ValueError("Input string must be a string.")
         return {"endpoint": "tokenize", "parameter": {"specifier": self._specifier, "inputString": input_string}}
 
     @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokenCount", -1))
     def unstable_count_tokens(self, input_string: str) -> int:
-        assert isinstance(input_string, str)
+        if not isinstance(input_string, str):
+            logger.error(f"unstable_count_tokens: input_string must be a string, got {type(input_string)}")
+            raise ValueError("Input string must be a string.")
         return {"endpoint": "countTokens", "parameter": {"specifier": self._specifier, "inputString": input_string}}

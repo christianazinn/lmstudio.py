@@ -4,21 +4,21 @@ from .handles import DynamicHandle, EmbeddingDynamicHandle, EmbeddingSpecificMod
 from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, ModelNamespace
 
 __all__ = [
-    "AsyncLMStudioClient",
-    "LMStudioClient",
-    "SyncLMStudioClient",
     "AsyncClientPort",
+    "AsyncLMStudioClient",
     "AsyncOngoingPrediction",
     "BaseClientPort",
     "ClientPort",
-    "OngoingPrediction",
+    "DiagnosticsNamespace",
     "DynamicHandle",
     "EmbeddingDynamicHandle",
+    "EmbeddingNamespace",
     "EmbeddingSpecificModel",
     "LLMDynamicHandle",
-    "LLMSpecificModel",
-    "DiagnosticsNamespace",
-    "EmbeddingNamespace",
     "LLMNamespace",
+    "LLMSpecificModel",
+    "LMStudioClient",
     "ModelNamespace",
+    "OngoingPrediction",
+    "SyncLMStudioClient",
 ]

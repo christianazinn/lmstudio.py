@@ -2,7 +2,10 @@ import json
 import threading
 import websocket
 from .BaseClientPort import BaseClientPort
-from ...utils import PseudoFuture
+from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
+
+
+logger = get_logger(__name__)
 
 
 class ClientPort(BaseClientPort):
@@ -13,8 +16,7 @@ class ClientPort(BaseClientPort):
 
     def on_message(self, ws, message):
         data = json.loads(message)
-        # FIXME debug
-        print("Message received: ", data)
+        logger.recv(f"Message received on sync port {self.endpoint}:\n{pretty_print(data)}")
 
         # TODO: more robust data handling
         data_type = data.get("type", None)
@@ -23,7 +25,6 @@ class ClientPort(BaseClientPort):
 
         # channel endpoints
         # TODO: error handling
-        # TODO: un-asyncify handlers...
         if data_type == "channelSend":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
@@ -35,7 +36,7 @@ class ClientPort(BaseClientPort):
         elif data_type == "channelError":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
-                self.channel_handlers[channel_id](data.get("error", {}))
+                self.channel_handlers[channel_id](data)
                 del self.channel_handlers[channel_id]
 
         # RPC endpoints
@@ -56,6 +57,7 @@ class ClientPort(BaseClientPort):
         self._connection_event.clear()
 
     def on_open(self, ws):
+        logger.websocket(f"Sending authentication packet to {self.uri} as {self.identifier}...")
         # auth handshake
         self._websocket.send(
             json.dumps(
@@ -66,10 +68,10 @@ class ClientPort(BaseClientPort):
                 }
             )
         )
+        logger.websocket(f"Sync port {self.endpoint} is authenticated.")
         self._connection_event.set()
 
     def connect(self) -> bool:
-        # websocket.enableTrace(True)
         with self._lock:
             self._websocket = websocket.WebSocketApp(
                 self.uri,
@@ -83,23 +85,28 @@ class ClientPort(BaseClientPort):
         wst.start()
 
         if not self._connection_event.wait(timeout=5):
-            print("Failed to connect to WebSocket server")
+            logger.error(f"Failed to connect to WebSocket server at {self.uri}.")
             return False
 
+        logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
     def _send_payload(self, payload: dict, extra: dict | None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
+                logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
                 self._websocket.send(json.dumps(payload))
             else:
-                print("Cannot send payload: websocket not connected")
+                logger.error("Attempted to send payload, but WebSocket connection is not established.")
+                raise ValueError("WebSocket connection is not established.")
             return extra
 
     def close(self) -> None:
         with self._lock:
             if self._websocket:
+                logger.websocket(f"Closing WebSocket connection on async port {self.endpoint}.")
                 self._websocket.close()
+                logger.websocket(f"WebSocket connection closed to {self.endpoint}.")
 
     def is_connected(self) -> bool:
         return self._connection_event.is_set()
@@ -114,7 +121,15 @@ class ClientPort(BaseClientPort):
     def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None):
         assert self._websocket is not None
         self._send_payload(payload)
+        logger.debug(
+            f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
+        )
         complete.wait()
+
+        if "error" in result:
+            logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
+            raise RPCError(f"Error in RPC call: {result.get('error').get('title', 'Unknown error')}")
+
         result = result.get("result", result)
         result.update({"extra": extra})
         return result

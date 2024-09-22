@@ -5,10 +5,10 @@ from .ModelSpecifier import ModelSpecifier, InstanceReferenceModel, QueryModel
 
 __all__ = [
     "DownloadedModel",
+    "InstanceReferenceModel",
     "ModelDescriptor",
     "ModelDomainType",
     "ModelQuery",
     "ModelSpecifier",
-    "InstanceReferenceModel",
     "QueryModel",
 ]

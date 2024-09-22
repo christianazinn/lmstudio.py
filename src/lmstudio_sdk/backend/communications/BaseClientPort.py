@@ -1,8 +1,11 @@
 import threading
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Callable, Any
-from ...utils import sync_async_decorator, PseudoFuture
+from typing import Any, Callable, Dict
+from ...utils import get_logger, PseudoFuture, sync_async_decorator
+
+
+logger = get_logger(__name__)
 
 
 class BaseClientPort(ABC):
@@ -14,6 +17,7 @@ class BaseClientPort(ABC):
 
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         self.uri = uri + "/" + endpoint
+        self.endpoint = endpoint
         self.identifier = identifier
         self._passkey = passkey
         self._websocket = None
@@ -77,13 +81,23 @@ class BaseClientPort(ABC):
         if creation_parameter is not None:
             payload["creationParameter"] = creation_parameter
         self.channel_handlers[channel_id] = handler
+
+        logger.debug(
+            f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
+        )
+
         return {"payload": payload, "extra": {"channel_id": channel_id, "extra": extra}}
 
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
-    def send_channel_message(self, channel_id: int, payload: dict):
-        print("send_channel_message")
+    def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
-        payload["channelId"] = channel_id
+        payload = {
+            "type": "channelSend",
+            "channelId": channel_id,
+            "message": message,
+        }
+        logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
+
         return {"payload": payload}
 
     # TODO type hint for return type
@@ -111,6 +125,10 @@ class BaseClientPort(ABC):
         if parameter is not None:
             payload["parameter"] = parameter
         self.rpc_handlers[call_id] = rpc_handler
+
+        logger.debug(
+            f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
+        )
 
         return {
             "payload": payload,

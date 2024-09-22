@@ -1,13 +1,5 @@
-from typing import Union, TypeVar, Callable, NotRequired, Generic, TypedDict
-from enum import Enum
+from typing import Callable, Generic, NotRequired, TypedDict, TypeVar
 from ...utils import AbortSignal
-
-
-class LogLevel(Enum):
-    DEBUG = "debug"
-    INFO = "info"
-    WARN = "warn"
-    ERROR = "error"
 
 
 TLoadModelConfig = TypeVar("TLoadModelConfig")
@@ -52,22 +44,6 @@ class BaseLoadModelOpts(TypedDict, Generic[TLoadModelConfig]):
     ```
 
     AbortSignal is the Python equivalent of JavaScript's AbortSignal for cancelling asynchronous operations.
-    """
-
-    # TODO: in TS verbose would default to False, so make sure to handle this
-    verbose: NotRequired[Union[bool, LogLevel]]
-    """
-    Controls the logging of model loading progress.
-
-    - If set to `True`, logs progress at the "info" level.
-    - If set to `False`, no logs are emitted.
-    - If a specific logging level is desired, it can be provided as a LogLevel enum value.
-
-    Logs are directed to the logger specified during the `LMStudioClient` construction.
-
-    Progress logs will be disabled if an `on_progress` callback is provided.
-
-    Default value is LogLevel.INFO, which logs progress at the "info" level.
     """
 
     on_progress: NotRequired[Callable[[float], None]]

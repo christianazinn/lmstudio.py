@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, List, Any, Generic, TypeVar, AsyncIterator
+from typing import Any, AsyncIterator, Callable, Generic, List, Optional, TypeVar
 from ...dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
 
 

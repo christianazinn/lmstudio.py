@@ -2,8 +2,11 @@ import asyncio
 import json
 from http.client import HTTPConnection
 
-from ...utils import lms_default_ports
+from ...utils import lms_default_ports, get_logger
 from .LMStudioClient import LMStudioClient
+
+
+logger = get_logger(__name__)
 
 
 class AsyncLMStudioClient(LMStudioClient):
@@ -40,8 +43,10 @@ class AsyncLMStudioClient(LMStudioClient):
                 timeout=10,  # Adjust timeout as needed
             )
             successful_port = next(p for p in port if isinstance(p, int))
+            logger.info(f"Found LM Studio server on localhost port {successful_port}.")
             return f"ws://127.0.0.1:{successful_port}"
         except asyncio.TimeoutError:
+            logger.error("Failed to connect to LM Studio on any of the default ports.")
             raise ValueError("""
                 Failed to connect to LM Studio on the default port (1234).
                 Is LM Studio running? If not, you can start it by running `lms server start`.
@@ -52,26 +57,29 @@ class AsyncLMStudioClient(LMStudioClient):
     def __init__(
         self,
         base_url: str | None,
-        verbose_error_messages: bool,
         client_identifier: str | None,
         client_passkey: str | None,
     ):
-        super().__init__(base_url, verbose_error_messages, client_identifier, client_passkey)
+        super().__init__(base_url, client_identifier, client_passkey)
 
     # TODO: remind user to connect()
     async def connect(self):
         if self.base_url is None:
+            logger.warning("base_url is None. Attempting to guess base_url.")
             self.base_url = await self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
         self.create_ports(True)
 
+        logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         await asyncio.gather(
             self.llm.connect(), self.embedding.connect(), self.system.connect(), self.diagnostics.connect()
         )
+        logger.info("Connected to LM Studio server.")
 
-        # HACK
         return self
 
     async def close(self):
+        logger.info(f"Closing connection to LM Studio server at {self.base_url}...")
         await asyncio.gather(self.llm.close(), self.embedding.close(), self.system.close(), self.diagnostics.close())
+        logger.info("Closed connection to LM Studio server.")
