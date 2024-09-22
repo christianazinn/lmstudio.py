@@ -93,10 +93,16 @@ class ClientPort(BaseClientPort):
     def _rpc_complete_event(self):
         return asyncio.Event()
 
-    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict):
+    def promise_event(self):
+        return asyncio.Future()
+
+    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict, extra: Dict | None = None):
         assert self._websocket is not None
         await self._send_payload(payload)
         await complete.wait()
+        result = result.get("result", result)
+        result.update({"extra": extra})
+        print("result:", result)
         return result
 
 

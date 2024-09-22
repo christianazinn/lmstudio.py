@@ -130,12 +130,12 @@ class LMStudioClient:
         self.diagnostics = DiagnosticsNamespace(diagnostics_port)
 
         await self.llm.connect()
-        await self.embedding.connect()
-        await self.system.connect()
-        await self.diagnostics.connect()
+        # await self.embedding.connect()
+        # await self.system.connect()
+        # await self.diagnostics.connect()
 
     async def close(self):
         await self.llm.close()
-        await self.embedding.close()
-        await self.system.close()
-        await self.diagnostics.close()
+        # await self.embedding.close()
+        # await self.system.close()
+        # await self.diagnostics.close()

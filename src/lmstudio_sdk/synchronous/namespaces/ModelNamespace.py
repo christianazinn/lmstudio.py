@@ -35,46 +35,6 @@ class ModelNamespace(BaseModelNamespace[TClientPort, TLoadModelConfig, TDynamicH
         self._port.close()
 
     def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
-        """
-        Load a model for inferencing. The first parameter is the model path. The second parameter is an
-        optional object with additional options. By default, the model is loaded with the default
-        preset (as selected in LM Studio) and the verbose option is set to true.
-
-        When specifying the model path, you can use the following format:
-
-        `<publisher>/<repo>[/model_file]`
-
-        If `model_file` is not specified, the first (sorted alphabetically) model in the repository is
-        loaded.
-
-        To find out what models are available, you can use the `lms ls` command, or programmatically
-        use the `client.system.listDownloadedModels` method.
-
-        Here are some examples:
-
-        Loading Llama 3:
-
-        ```typescript
-        const model = client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF");
-        ```
-
-        Loading a specific quantization (q4_k_m) of Llama 3:
-
-        ```typescript
-        const model = client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf");
-        ```
-
-        To unload the model, you can use the `client.llm.unload` method. Additionally, when the last
-        client with the same `clientIdentifier` disconnects, all models loaded by that client will be
-        automatically unloaded.
-
-        Once loaded, see {@link LLMDynamicHandle} or {@link EmbeddingDynamicHandle} for how to use the
-        model for inferencing or other things you can do with the model.
-
-        :param path: The path of the model to load.
-        :param opts: Options for loading the model.
-        :return: The model that can be used for inferencing
-        """
         # TODO logging
         full_path: str = path
         result = None

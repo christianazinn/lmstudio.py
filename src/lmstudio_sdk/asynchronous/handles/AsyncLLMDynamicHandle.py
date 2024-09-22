@@ -25,6 +25,7 @@ from .AsyncDynamicHandle import DynamicHandle
 
 
 def predict_internal_process_result(extra):
+    print(extra)
     original_extra = extra.get("extra")
     cancel_event = original_extra.get("cancel_event")
     cancel_send = original_extra.get("cancel_send")
@@ -195,6 +196,7 @@ class LLMDynamicHandle(DynamicHandle):
             "extra": extra,
         }
 
+    # TODO abort callbacks
     @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
     def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts):
         """

@@ -38,7 +38,7 @@ class BaseClientPort(ABC):
         return iscoroutinefunction(self._send_payload)
 
     # TODO endpoint enum
-    # TODO: this is an absolutely atrocious design pattern
+    # TODO: this is an absolutely atrocious design pattern with extra, figure it out
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def create_channel(
         self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: Dict | None = None
@@ -57,6 +57,7 @@ class BaseClientPort(ABC):
 
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def send_channel_message(self, channel_id: int, payload: dict):
+        print("send_channel_message")
         assert self._websocket is not None
         payload["channelId"] = channel_id
         return {"payload": payload}
@@ -64,7 +65,7 @@ class BaseClientPort(ABC):
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
     @sync_async_decorator(obj_method="_call_rpc", process_result=lambda x: x.get("result", x))
-    def call_rpc(self, endpoint: str, parameter: Any | None):
+    def call_rpc(self, endpoint: str, parameter: Any | None, extra: Dict | None = None):
         assert self._websocket is not None
         result = {}
 
@@ -91,4 +92,5 @@ class BaseClientPort(ABC):
             "payload": payload,
             "complete": complete,
             "result": result,
+            "extra": extra,
         }

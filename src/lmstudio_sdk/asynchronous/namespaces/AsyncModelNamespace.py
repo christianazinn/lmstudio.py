@@ -1,7 +1,6 @@
 from typing import List, Union, Generic, TypeVar
 from abc import ABC, abstractmethod
-import asyncio
-import functools
+from functools import partial
 
 from ...common import (
     ModelDescriptor,
@@ -23,6 +22,17 @@ TClientPort = TypeVar("TClientPort", bound="BaseClientPort")
 TLoadModelConfig = TypeVar("TLoadModelConfig")
 TDynamicHandle = TypeVar("TDynamicHandle", bound="DynamicHandle")
 TSpecificModel = TypeVar("TSpecificModel")
+
+
+def load_process_result(extra):
+    channel_id = extra.get("channel_id")
+    extra = extra.get("extra")
+    if "signal" in extra:
+        print("hello", channel_id)
+        extra.get("signal").add_listener(partial(extra.get("cancel_send"), channel_id))
+    if extra.get("is_async"):
+        return extra.get("promise")
+    return extra.get("promise").result()
 
 
 # TODO ughhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
@@ -125,8 +135,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
     def close(self) -> None:
         pass
 
-    # TODO slightly more complicated reconciliation with return types
-    async def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
         optional object with additional options. By default, the model is loaded with the default
@@ -167,8 +175,12 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         :param opts: Options for loading the model.
         :return: A promise that resolves to the model that can be used for inferencing
         """
+
+    # TODO slightly more complicated reconciliation with return types
+    @sync_async_decorator(obj_method="create_channel", process_result=load_process_result)
+    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         # TODO logging
-        promise = asyncio.Future()
+        promise = self._port.promise_event()
         full_path: str = path
 
         def resolve(value):
@@ -203,9 +215,23 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             elif message_type == "error":
                 reject(Exception(message.get("message", "Unknown error")))
 
-        channel_id = await self._port.create_channel(
-            "loadModel",
-            {
+        # TODO this never gets called
+        @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
+        def cancel_send(channel_id):
+            reject(Exception("Model loading was cancelled"))
+            return {"channel_id": channel_id, "payload": {"type": "cancel"}}
+
+        extra = {"is_async": self._port.is_async(), "promise": promise}
+        if opts and "signal" in opts:
+            signal = opts.get("signal")
+            if signal is not None:
+                extra.update({"signal": signal, "cancel_send": cancel_send})
+
+        print("about to pass to channel creation")
+
+        return {
+            "endpoint": "loadModel",
+            "creation_parameter": {
                 "path": path,
                 "identifier": opts["identifier"] if opts and "identifier" in opts else path,
                 "loadConfigStack": {
@@ -219,20 +245,9 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                     ]
                 },
             },
-            handle_message,
-        )
-
-        def on_cancel():
-            # TODO async things again
-            self._port.send_channel_message(channel_id, {"type": "cancel"})
-            reject(Exception("Model loading was cancelled"))
-
-        if opts and hasattr(opts, "signal"):
-            signal = opts.get("signal")
-            if signal is not None:
-                signal.add_listener(on_cancel)
-
-        return promise  # type: ignore
+            "handler": handle_message,
+            "extra": extra,
+        }
 
     @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def unload(self, identifier: str) -> None:
@@ -253,8 +268,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         return {"endpoint": "listLoaded", "parameter": None}
 
     # TODO: somehow you need to get self in there
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
-    async def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
+    @sync_async_decorator(
+        obj_method="call_rpc",
+        process_result=lambda x: x.get("extra").get("process_result")(x),
+    )
+    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -290,18 +308,25 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         if isinstance(query, str):
             query = {"identifier": query}
         query["domain"] = self._namespace
-        info = await self._port.call_rpc(
-            "getModelInfo", {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True}
-        )
-        if not info or info is None:
-            raise Exception("Model not found")
-        return self.create_domain_specific_model(self._port, info.get("instanceReference"), info.get("descriptor"))  # type: ignore
+
+        def process_get_result(x):
+            if not x or x is None:
+                raise Exception("Model not found")
+            return self.create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
+
+        return {
+            "endpoint": "getModelInfo",
+            "parameter": {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
+            "extra": {
+                "process_result": lambda x: process_get_result(x),
+            },
+        }
 
     @sync_async_decorator(obj_method="get", process_result=lambda x: x)
     def unstable_get_any(self) -> TSpecificModel:
         return {"query": {}}
 
-    # TODO slightly more complicated reconciliation: fix me!
+    # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(
         self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
     ) -> TSpecificModel:
@@ -309,26 +334,10 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.
         """
-        if load_opts:
-            load_opts.identifier = identifier
-
-        # bad: manually implementing async/sync reconciliation
-        async def async_get_or_load():
-            try:
-                return await self.get({"identifier": identifier})
-            except Exception:
-                return await self.load(path, load_opts)
-
-        def sync_get_or_load():
-            try:
-                return self.get({"identifier": identifier})
-            except Exception:
-                return self.load(path, load_opts)
-
-        if self._port.is_async():
-            return async_get_or_load
-        else:
-            return sync_get_or_load
+        try:
+            return self.get({"identifier": identifier})
+        except Exception:
+            return self.load(path, load_opts)
 
 
 # TODO custom ports with type locks

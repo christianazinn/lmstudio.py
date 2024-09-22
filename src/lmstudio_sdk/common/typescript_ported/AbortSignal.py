@@ -25,12 +25,13 @@ class AbortSignal:
         if not self._aborted:
             self._listeners = [li for li in self._listeners if li != listener]
 
-    def abort(self) -> None:
+    # TODO deasyncify
+    async def abort(self) -> None:
         """Aborts the signal."""
         if not self._aborted:
             self._aborted = True
             for listener in self._listeners:
-                listener()
+                await listener()
             self._listeners.clear()
             self._event.set()
 

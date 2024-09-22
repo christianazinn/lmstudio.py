@@ -5,6 +5,25 @@ from typing import Dict
 from .BaseClientPort import BaseClientPort
 
 
+class PseudoFuture(threading.Event):
+    def __init__(self):
+        super().__init__()
+
+    def set_result(self, result):
+        self._result = result
+        self.set()
+
+    def set_exception(self, exception):
+        self._exception = exception
+        self.set()
+
+    def result(self):
+        self.wait()
+        if hasattr(self, "_exception"):
+            raise self._exception
+        return self._result
+
+
 class ClientPort(BaseClientPort):
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
@@ -107,11 +126,16 @@ class ClientPort(BaseClientPort):
     def _rpc_complete_event(self):
         return threading.Event()
 
+    def promise_event(self):
+        return PseudoFuture()
+
     # TODO type hint for return type
-    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict):
+    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: Dict | None):
         assert self._websocket is not None
         self._send_payload(payload)
         complete.wait()
+        result = result.get("result", result)
+        result.update({"extra": extra})
         return result
 
 

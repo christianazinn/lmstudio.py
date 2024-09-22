@@ -92,6 +92,8 @@ def get_target_and_method(self, obj_method):
         return self, getattr(self, obj_method)
     elif isinstance(obj_method, tuple):
         obj_name, method_name = obj_method
+        if not isinstance(obj_name, str):
+            return obj_name, getattr(obj_name, method_name)
         target_obj = getattr(self, obj_name)
         return target_obj, getattr(target_obj, method_name)
     else:
