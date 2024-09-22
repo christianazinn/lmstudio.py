@@ -1,5 +1,5 @@
-from secrets import token_bytes
 from base64 import b64encode
+from secrets import token_bytes
 
 
 lms_default_ports = [1234]
