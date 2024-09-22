@@ -1,4 +1,4 @@
-from .BaseLoadModelOpts import LogLevel, BaseLoadModelOpts
+from .BaseLoadModelOpts import BaseLoadModelOpts
 from .EmbeddingLoadModelConfig import EmbeddingLoadModelConfig
 from .LLMApplyPromptTemplateOpts import LLMApplyPromptTemplateOpts
 from .LLMLoadModelConfig import LLMLlamaAccelerationSetting, LLMLlamaAccelerationOffloadRatio, LLMLoadModelConfig
@@ -17,5 +17,4 @@ __all__ = [
     "LLMPredictionExtraOpts",
     "LLMPredictionOpts",
     "LLMStructuredPredictionSetting",
-    "LogLevel",
 ]

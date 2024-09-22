@@ -10,7 +10,6 @@ from .configs import (
     LLMPredictionExtraOpts,
     LLMPredictionOpts,
     LLMStructuredPredictionSetting,
-    LogLevel,
 )
 from .llms import (
     convert_dict_to_kv_config,
@@ -79,7 +78,6 @@ __all__ = [
     "LLMPredictionStats",
     "LLMPredictionStopReason",
     "LLMStructuredPredictionSetting",
-    "LogLevel",
     "ModelDescriptor",
     "ModelDomainType",
     "ModelQuery",

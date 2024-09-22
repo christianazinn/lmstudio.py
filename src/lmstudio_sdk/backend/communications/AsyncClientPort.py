@@ -3,7 +3,7 @@ import json
 import websockets
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, pretty_print_error
+from ...utils import get_logger, pretty_print, pretty_print_error, RPCError
 
 
 logger = get_logger(__name__)
@@ -117,9 +117,7 @@ class AsyncClientPort(BaseClientPort):
 
         if "error" in result:
             logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
-            raise ValueError(
-                f"Error in RPC call: {result.get('error').get('title', 'Unknown error - enable RECV level logging')}"
-            )
+            raise RPCError(f"Error in RPC call: {result.get('error').get('title', 'Unknown error')}")
 
         result = result.get("result", result)
         result.update({"extra": extra})

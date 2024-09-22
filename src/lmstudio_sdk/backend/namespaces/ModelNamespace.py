@@ -15,7 +15,7 @@ from ...dataclasses import (
     ModelQuery,
     ModelSpecifier,
 )
-from ...utils import get_logger, pretty_print, pretty_print_error, sync_async_decorator
+from ...utils import ChannelError, get_logger, pretty_print, pretty_print_error, sync_async_decorator
 from ..handles import EmbeddingDynamicHandle, EmbeddingSpecificModel, DynamicHandle, LLMDynamicHandle, LLMSpecificModel
 from ..communications import BaseClientPort
 
@@ -221,13 +221,13 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                         on_progress(progress)
             elif message_type == "channelError":
                 logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
-                reject(Exception(message.get("error").get("title")))
+                reject(ChannelError(message.get("error").get("title")))
 
-        # TODO this never gets called
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
-            reject(Exception("Model loading was cancelled"))
+            # we choose not to reject with an Exception because the user should not have to handle it
+            resolve(None)
             return {"channel_id": channel_id, "message": {"type": "cancel"}}
 
         extra = {"is_async": self._port.is_async(), "promise": promise}

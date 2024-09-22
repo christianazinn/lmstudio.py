@@ -19,7 +19,7 @@ from ...dataclasses import (
     ModelDescriptor,
     ModelSpecifier,
 )
-from ...utils import BufferedEvent, get_logger, pretty_print_error, sync_async_decorator
+from ...utils import BufferedEvent, ChannelError, get_logger, pretty_print_error, sync_async_decorator
 from .DynamicHandle import DynamicHandle
 
 
@@ -172,7 +172,7 @@ class LLMDynamicHandle(DynamicHandle):
                 )
             elif message_type == "channelError":
                 logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
-                on_error(Exception(message.get("error").get("title")))
+                on_error(ChannelError(message.get("error").get("title")))
 
         # TODO does this decorator function properly when internal?
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
@@ -180,6 +180,7 @@ class LLMDynamicHandle(DynamicHandle):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             if not finished.is_set():
                 return {"channel_id": channel_id, "message": {"type": "cancel"}}
+            # HACK side effect of the decorator, easier to just eat an extra debug message
             return {"channel_id": None, "message": None}
 
         extra = extra or {}
