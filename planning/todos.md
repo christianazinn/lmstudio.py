@@ -17,9 +17,5 @@ TODO: code hangs on RPC errors
 TODO: fix up imports again!!!
 TODO: make return types Optional for error handling
 TODO: clean up import statements, alphabetize
-TODO: \_connect, \_close should be connect, close
-
-ABSOLUTELY REMAINS TO BE DONE:
-ModelNamespace
-LMStudioClient
-Refactor!!!
+TODO: make sure your aborts are wired up and functional! they arent yet implemented in llmdynamichandle
+TODO: type hints, abstractmethods

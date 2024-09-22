@@ -7,7 +7,7 @@ from .handles import (
     LLMSpecificModel,
 )
 from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
-from .AsyncLMStudioClient import LMStudioClient
+from .client.AsyncLMStudioClient import LMStudioClient
 
 __all__ = [
     "ClientPort",

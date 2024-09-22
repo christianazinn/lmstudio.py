@@ -174,7 +174,7 @@ class LLMDynamicHandle(DynamicHandle):
                 on_error(Exception(message.get("message", "Unknown error")))
 
         # TODO does this decorator function properly when internal?
-        # TODO test me!
+        # TODO fix me! cf. ModelNamespace
         @sync_async_decorator(obj_method="send_channel_message", process_result=lambda x: None)
         def cancel_send(channel_id):
             if not finished.is_set():

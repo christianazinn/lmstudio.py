@@ -115,7 +115,7 @@ class ClientPort(BaseClientPort):
                 print("Cannot send payload: websocket not connected")
             return extra
 
-    def _close(self) -> None:
+    def close(self) -> None:
         with self._lock:
             if self._websocket:
                 self._websocket.close()

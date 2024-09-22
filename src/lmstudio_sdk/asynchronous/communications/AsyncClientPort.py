@@ -27,7 +27,7 @@ class ClientPort(BaseClientPort):
         self.running = True
         self.receive_task = asyncio.create_task(self.receive_messages())
 
-    async def _close(self):
+    async def close(self):
         self.running = False
         if self._websocket:
             await self._websocket.close()

@@ -14,7 +14,7 @@ class SystemNamespace:
     def connect(self) -> None:
         return {}
 
-    @sync_async_decorator(obj_method="_close", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
         return {}
 

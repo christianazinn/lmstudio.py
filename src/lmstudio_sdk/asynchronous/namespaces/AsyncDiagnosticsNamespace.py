@@ -23,7 +23,7 @@ class DiagnosticsNamespace:
     def connect(self):
         pass
 
-    @sync_async_decorator(obj_method="_close", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self):
         pass
 

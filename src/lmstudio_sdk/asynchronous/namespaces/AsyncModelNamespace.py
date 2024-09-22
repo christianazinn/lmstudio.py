@@ -131,7 +131,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
     def connect(self) -> None:
         pass
 
-    @sync_async_decorator(obj_method="_close", process_result=lambda x: None)
+    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
         pass
 
@@ -337,6 +337,8 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         try:
             return self.get({"identifier": identifier})
         except Exception:
+            if load_opts:
+                load_opts["identifier"] = identifier
             return self.load(path, load_opts)
 
 
