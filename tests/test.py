@@ -1,22 +1,40 @@
-# from lmstudio_sdk.LMStudioClient import LMStudioClient
-from lmstudio_sdk.asynchronous import LMStudioClient
+from lmstudio_sdk.backend.client.LMStudioClientFactory import LMStudioClient
+
+# from lmstudio_sdk.asynchronous import LMStudioClient
+# from lmstudio_sdk import AbortSignal
 import asyncio
 
 
 async def main():
     # TODO: your errors are indented
-    llm_client = await LMStudioClient.create({"base_url": "ws://localhost:1234"})
+    llm_client = await LMStudioClient(is_async=True, base_url="ws://localhost:1234")
     try:
         # model_path = "lmstudio-community/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q8_0.gguf"
         # model_path = "Qwen/Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
         # model_path = "qwen2"
 
-        await llm_client.system.list_downloaded_models()
+        # await llm_client.system.list_downloaded_models()
+
+        # TODO: for some reason the code will hang unless you edit this line
+        print("sdfaSs")
 
         # result = await llm_client.getLoadConfig(model_path)
-        model = await llm_client.llm.unstable_get_any()
+        model = await llm_client.llm.get("qwen2")
+        # signal = AbortSignal()
+        # model = await llm_client.llm.load("lmstudio-community/Qwen2-500M-Instruct-GGUF", {"signal": signal})
+        # print("sleeping")
+        # await asyncio.sleep(1)
+        # await signal.abort()
+        # print("should be aborted")
+        # model = await model
+        # print("Model loaded:", model)
+        # raise Exception("Test")
         # TODO unasyncify this
-        result = await (await model.respond([{"role": "user", "content": "Hello, how are you?"}], {}))
+        result = await model.respond([{"role": "user", "content": "Tell me a very long story."}], {})
+        await asyncio.sleep(1)
+        await result.cancel()
+        await asyncio.sleep(100)
+        raise Exception("Test")
         # async for completion in result:
         #    print(type(completion))
         #    print("frag", completion)
@@ -51,5 +69,5 @@ def syncmain():
 
 
 if __name__ == "__main__":
-    #    syncmain()
+    # syncmain()
     asyncio.run(main())
