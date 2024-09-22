@@ -1,4 +1,4 @@
-from typing import Literal, Union, TypedDict
+from typing import Literal, TypedDict, Union
 from .ModelQuery import ModelQuery
 
 

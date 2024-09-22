@@ -1,5 +1,5 @@
-from typing import List, Any, TypedDict
 from enum import Enum
+from typing import Any, List, TypedDict
 
 
 class KVConfigField(TypedDict):

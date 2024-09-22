@@ -1,4 +1,4 @@
-from typing import Union, TypeVar, Callable, NotRequired, Generic, TypedDict
+from typing import Callable, Generic, NotRequired, TypedDict, TypeVar, Union
 from enum import Enum
 from ...utils import AbortSignal
 

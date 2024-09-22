@@ -1,4 +1,4 @@
-from typing import NotRequired, TypedDict, Literal
+from typing import Literal, NotRequired, TypedDict
 
 
 ModelDomainType = Literal["llm", "embedding"]

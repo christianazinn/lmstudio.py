@@ -1,4 +1,4 @@
-from typing import NotRequired, List, Callable, TypedDict, Literal
+from typing import Callable, List, Literal, NotRequired, TypedDict
 from .LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
 
 

@@ -1,4 +1,4 @@
-from typing import Union, Literal, Dict, Any
+from typing import Any, Dict, Literal, Union
 
 
 LLMStructuredPredictionSetting = Union[

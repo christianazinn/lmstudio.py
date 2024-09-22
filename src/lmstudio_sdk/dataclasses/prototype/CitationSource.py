@@ -1,4 +1,4 @@
-from typing import Union, NotRequired, TypedDict
+from typing import NotRequired, TypedDict, Union
 
 
 class CitationSource(TypedDict):
