@@ -2,8 +2,8 @@ from .AbortSignal import AbortSignal
 from .BufferedEvent import BufferedEvent
 from .logger import get_logger, RECV, SEND, WRAPPER, WEBSOCKET
 from .PseudoFuture import PseudoFuture
-from .sync_async_decorator import pretty_print, pretty_print_error, sync_async_decorator
-from .utils import ChannelError, lms_default_ports, generate_random_base64, RPCError
+from .sync_async_decorator import sync_async_decorator
+from .utils import ChannelError, lms_default_ports, generate_random_base64, pretty_print, pretty_print_error, RPCError
 
 __all__ = [
     "AbortSignal",
