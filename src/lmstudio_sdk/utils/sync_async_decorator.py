@@ -133,11 +133,11 @@ def sync_async_decorator(
                 or asyncio.iscoroutinefunction(target_method)
             ):
                 logger.wrapper(
-                    f"Calling async method '{target_method}' with outer args {args} and outer kwargs\n{pretty_print(kwargs)}"
+                    f"As {self}, calling async method '{target_method}' with outer args {args} and outer kwargs\n{pretty_print(kwargs)}"
                 )
                 return AsyncCallable(lambda: async_wrapper(self, target_method, *args, **kwargs))
             logger.wrapper(
-                f"Calling sync method '{target_method}' with outer args {args} and outer kwargs\n{pretty_print(kwargs)}"
+                f"As {self}, calling sync method '{target_method}' with outer args {args} and outer kwargs\n{pretty_print(kwargs)}"
             )
             return sync_wrapper(self, target_method, *args, **kwargs)
 

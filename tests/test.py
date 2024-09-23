@@ -5,7 +5,7 @@ logger.setLevel(10)
 
 
 async def main():
-    llm_client = await LMStudioClient(is_async=True, base_url="ws://localhost:1234")
+    llm_client = await LMStudioClient(base_url="ws://localhost:1234")
     try:
         # model_path = "lmstudio-community/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q8_0.gguf"
         # model_path = "Qwen/Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
@@ -39,14 +39,9 @@ async def main():
         # raise Exception("Test")
         # TODO unasyncify this
 
-        print("-------------------")
         result = await model.respond([{"role": "user", "content": "Tell me a long story."}], {})
         print("Result:", result)
-        await asyncio.sleep(1)
-        print("CANCELLING\n\n\n\n\n")
         print(await result)
-        await asyncio.sleep(5)
-        raise Exception("Test")
         # result = await (await model.respond([{"role": "user", "content": "Say only the word 'hi'."}], {}))
         # async for completion in result:
         #    print(type(completion))
@@ -76,7 +71,9 @@ def syncmain():
     client = LMStudioClient()
     model = client.llm.unstable_get_any()
 
-    for fragment in model.respond([{"role": "user", "content": "Hello, how are you?"}], {}):
+    prediction = model.respond([{"role": "user", "content": "Tell me a long story."}], {})
+
+    for fragment in prediction:
         print(fragment, end="")
 
 
