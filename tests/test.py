@@ -1,11 +1,10 @@
-from lmstudio_sdk import LMStudioClient, logger, RECV
+from lmstudio_sdk import LMStudioClient, logger
 import asyncio
 
-logger.setLevel(RECV)
+logger.setLevel(10)
 
 
 async def main():
-    # TODO: your errors are indented
     llm_client = await LMStudioClient(is_async=True, base_url="ws://localhost:1234")
     try:
         # model_path = "lmstudio-community/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q8_0.gguf"
@@ -13,6 +12,9 @@ async def main():
         # model_path = "qwen2"
 
         # await llm_client.system.list_downloaded_models()
+
+        # TODO: for some reason the code will hang unless you edit this line
+        print("sdfaSs")
 
         # result = await llm_client.getLoadConfig(model_path)
         # model = await llm_client.llm.get("qwen2")
@@ -26,10 +28,7 @@ async def main():
         # except Exception as e:
         #    print("Failed to load model:", e)
 
-        try:
-            model = await llm_client.llm.get("qwsen2")
-        except Exception:
-            model = await llm_client.llm.get("qwen2")
+        model = await llm_client.llm.get("qwen2")
         # print("sleeping")
         # await asyncio.sleep(1)
         # await signal.abort()
@@ -39,15 +38,21 @@ async def main():
         # print("Model loaded:", model)
         # raise Exception("Test")
         # TODO unasyncify this
-        result = await model.respond([{"role": "user", "content": "Say only the word 'hi'."}], {})
+
+        print("-------------------")
+        result = await model.respond([{"role": "user", "content": "Tell me a long story."}], {})
+        print("Result:", result)
         await asyncio.sleep(1)
-        await result.cancel()
+        print("CANCELLING\n\n\n\n\n")
+        print(await result)
         await asyncio.sleep(5)
         raise Exception("Test")
+        # result = await (await model.respond([{"role": "user", "content": "Say only the word 'hi'."}], {}))
         # async for completion in result:
         #    print(type(completion))
         #    print("frag", completion)
         # TODO result does not properly close
+        # return
         print(type(result))
         # result = await llm_client.load_model(model_path)
         print("Model loaded:", result)
@@ -60,21 +65,19 @@ async def main():
 
         # async for completion in llm_client.predict(model_path):
         #    print(completion)
+    except Exception as e:
+        print("Error:", e)
     finally:
+        # pass
         await llm_client.close()
 
 
 def syncmain():
-    llm_client = LMStudioClient({"base_url": "ws://localhost:1234"})
-    try:
-        model = llm_client.llm.unstable_get_any()
-        result = model.respond([{"role": "user", "content": "Hello, how are you?"}], {})
-        print(result)
-        for completion in result:
-            print(type(completion))
-            print("frag", completion)
-    finally:
-        llm_client.close()
+    client = LMStudioClient()
+    model = client.llm.unstable_get_any()
+
+    for fragment in model.respond([{"role": "user", "content": "Hello, how are you?"}], {}):
+        print(fragment, end="")
 
 
 if __name__ == "__main__":

@@ -12,3 +12,4 @@ TODO: make return types Optional for error handling
 TODO: clean up import statements, alphabetize
 TODO: type hints, abstractmethods
 TODO: README + docs
+TODO: make async result resolve to future content

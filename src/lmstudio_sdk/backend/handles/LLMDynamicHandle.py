@@ -30,7 +30,7 @@ def predict_internal_process_result(extra):
     original_extra = extra.get("extra")
     cancel_event = original_extra.get("cancel_event")
     cancel_send = original_extra.get("cancel_send")
-    channel_id = extra.get("channel_id")
+    channel_id = extra.get("channelId")
 
     cancel_event.subscribeOnce(partial(cancel_send, channel_id))
 
@@ -177,8 +177,13 @@ class LLMDynamicHandle(DynamicHandle):
         # TODO does this decorator function properly when internal?
         @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
+            print(channel_id)
+            import traceback
+
+            traceback.print_stack()
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             if not finished.is_set():
+                # return {"payload": {"type": "channelSend", "channel_id": channel_id, "message": {"type": "cancel"}}}
                 return {"channel_id": channel_id, "message": {"type": "cancel"}}
             # HACK side effect of the decorator, easier to just eat an extra debug message
             return {"channel_id": None, "message": None}
