@@ -1,11 +1,10 @@
-from lmstudio_sdk import LMStudioClient, logger, RECV
+from ..src.lmstudio_sdk import LMStudioClient, logger, RECV
 import asyncio
 
 logger.setLevel(RECV)
 
 
 async def main():
-    # TODO: your errors are indented
     llm_client = await LMStudioClient(is_async=True, base_url="ws://localhost:1234")
     try:
         # model_path = "lmstudio-community/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q8_0.gguf"
