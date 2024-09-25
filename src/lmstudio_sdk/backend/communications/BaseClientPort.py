@@ -86,7 +86,7 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return {"payload": payload, "extra": {"channel_id": channel_id, "extra": extra}}
+        return {"payload": payload, "extra": {"channelId": channel_id, "extra": extra}}
 
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def send_channel_message(self, channel_id: int, message: dict):

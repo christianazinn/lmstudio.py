@@ -1,61 +1,13 @@
 import asyncio
 import functools
-import json
 from typing import Any, Awaitable, Callable, TypeVar, Tuple, Union
 from .logger import get_logger
+from .utils import pretty_print
 
 logger = get_logger(__name__)
 
 
 T = TypeVar("T")
-
-
-class AsyncCallable:
-    """
-    Because functions are declared with def in this design pattern, asyncio.iscoroutinefunction
-    does not know at runtime that nested async function calls are async, so we wrap them to indicate
-    that they are async. It's a bit of a hack, but it works.
-    """
-
-    def __init__(self, func):
-        self.func = func
-
-    def __await__(self):
-        return self._await().__await__()
-
-    async def _await(self):
-        result = self.func
-        if asyncio.iscoroutine(result):
-            result = await result
-        elif callable(result):
-            result = result()
-            if asyncio.iscoroutine(result):
-                result = await result
-        return result
-
-
-# checks whether we need to await the target
-def is_async_callable(obj):
-    """Checks whether we need to await the target."""
-    return asyncio.iscoroutinefunction(obj) or isinstance(obj, AsyncCallable)
-
-
-# TODO: can you change indent on the fly?
-def pretty_print(obj):
-    """Pretty prints the object."""
-    try:
-        return json.dumps(obj, indent=2, default=lambda x: str(x))
-    except Exception as e:
-        logger.error(f"Failed to pretty print object: {e}")
-        return obj
-
-
-def pretty_print_error(obj):
-    try:
-        obj["stack"] = obj.get("stack", "").split("\n")
-        return pretty_print(obj)
-    except Exception:
-        return obj
 
 
 def sync_async_decorator(
@@ -94,18 +46,11 @@ def sync_async_decorator(
             # output of function is a dictionary of named arguments to pass to the target method
             method_args = func(self, *args, **kwargs)
             if not isinstance(method_args, dict):
+                logger.warning(f"Expected dictionary from {func}, got {type(method_args)}: {method_args}")
                 method_args = {}
 
-            # handle nested decorated calls
-            if hasattr(target_method, "is_sync_async_decorated"):
-                result = await target_method(**method_args)
-            # handle top-level async calls
-            elif is_async_callable(target_method):
-                result = await target_method(**method_args)
-            # welp guess it isn't async
-            else:
-                result = target_method(**method_args)
-
+            logger.wrapper(f"Calling async method '{target_method}' with inner args {method_args}")
+            result = await target_method(**method_args)
             logger.wrapper(f"Async wrapper for {target_method} received result:\n{pretty_print(result)}")
 
             return process_result(result)
@@ -116,18 +61,11 @@ def sync_async_decorator(
             # output of function is a dictionary of named arguments to pass to the target method
             method_args = func(self, *args, **kwargs)
             if not isinstance(method_args, dict):
+                logger.warning(f"Expected dictionary from {func}, got {type(method_args)}: {method_args}")
                 method_args = {}
 
-            # handle nested decorated calls
-            if hasattr(target_method, "is_sync_async_decorated"):
-                result = target_method(**method_args)
-            # handle top-level async calls, which should never happen because this is a sync wrapper
-            elif is_async_callable(target_method):
-                raise RuntimeError(f"Cannot call async method '{obj_method}' in a synchronous context")
-            # business as usual
-            else:
-                result = target_method(**method_args)
-
+            logger.wrapper(f"Calling sync method '{target_method}' with inner args {method_args}")
+            result = target_method(**method_args)
             logger.wrapper(f"Sync wrapper for {target_method} received result:\n{pretty_print(result)}")
 
             return process_result(result)
@@ -139,15 +77,28 @@ def sync_async_decorator(
             target_method = get_target_and_method(self, obj_method)
 
             # determine whether to wrap in async or sync based on the target method
-            if is_async_callable(target_method) or hasattr(target_method, "is_sync_async_decorated"):
-                logger.wrapper(
-                    f"Calling async method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}"
-                )
-                return AsyncCallable(lambda: async_wrapper(self, target_method, *args, **kwargs))
-            logger.wrapper(f"Calling sync method '{target_method}' with args {args} and kwargs\n{pretty_print(kwargs)}")
+            is_async = (
+                (hasattr(self, "is_async") and self.is_async())
+                or (hasattr(target_method, "is_async") and target_method.is_async(target_method.__self__))
+                or asyncio.iscoroutinefunction(target_method)
+            )
+            logger.wrapper(f"{self}: calling {'async' if is_async else 'sync'} '{target_method}' \
+                           with outer args {args} and outer kwargs\n{pretty_print(kwargs)}")
+
+            if is_async:
+                return async_wrapper(self, target_method, *args, **kwargs)
             return sync_wrapper(self, target_method, *args, **kwargs)
 
-        wrapper.is_sync_async_decorated = True
+        # recursively determine whether the target method is async by asking the target method's target method
+        def is_async(self):
+            target_method = get_target_and_method(self, obj_method)
+            return (
+                target_method.is_async(self)
+                if hasattr(target_method, "is_async")
+                else asyncio.iscoroutinefunction(target_method)
+            )
+
+        wrapper.is_async = is_async
         return wrapper
 
     return decorator
