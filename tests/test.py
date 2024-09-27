@@ -11,6 +11,9 @@ async def main():
         # model_path = "Qwen/Qwen2-0.5B-Instruct-GGUF/qwen2-0_5b-instruct-q4_0.gguf"
         # model_path = "qwen2"
 
+        print(await llm_client.system.list_downloaded_models())
+        return
+
         # await llm_client.system.list_downloaded_models()
 
         # TODO: for some reason the code will hang unless you edit this line
@@ -60,8 +63,8 @@ async def main():
 
         # async for completion in llm_client.predict(model_path):
         #    print(completion)
-    except Exception as e:
-        print("Error:", e)
+    # except Exception as e:
+    # print("Error:", e)
     finally:
         # pass
         await llm_client.close()

@@ -37,7 +37,14 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _call_rpc(self, payload: dict, complete: threading.Event | asyncio.Event, extra: dict | None):
+    def _call_rpc(
+        self,
+        payload: dict,
+        complete: threading.Event | asyncio.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None,
+    ):
         pass
 
     @abstractmethod
@@ -69,7 +76,12 @@ class BaseClientPort(ABC):
     # TODO: this is an absolutely atrocious design pattern with extra, figure it out
     @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def create_channel(
-        self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: dict | None = None
+        self,
+        endpoint: str,
+        creation_parameter: Any | None,
+        handler: Callable,
+        callback: Callable,
+        extra: dict | None = None,
     ) -> int:
         assert self._websocket is not None
         channel_id = self.get_next_channel_id()
@@ -102,8 +114,9 @@ class BaseClientPort(ABC):
 
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
-    @sync_async_decorator(obj_method="_call_rpc", process_result=lambda x: x.get("result", x))
-    def call_rpc(self, endpoint: str, parameter: Any | None, extra: dict | None = None):
+    def call_rpc(
+        self, endpoint: str, parameter: Any | None, callback: Callable[[dict], Any], extra: dict | None = None
+    ):
         assert self._websocket is not None
         result = {}
 
@@ -130,9 +143,4 @@ class BaseClientPort(ABC):
             f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
         )
 
-        return {
-            "payload": payload,
-            "complete": complete,
-            "result": result,
-            "extra": extra,
-        }
+        return self._call_rpc(payload, complete, result, callback, extra)

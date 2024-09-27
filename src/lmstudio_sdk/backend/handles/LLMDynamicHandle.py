@@ -171,8 +171,6 @@ class LLMDynamicHandle(DynamicHandle):
                 logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
                 on_error(ChannelError(message.get("error").get("title")))
 
-        # TODO does this decorator function properly when internal?
-        @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
             print(channel_id)
             import traceback
@@ -183,10 +181,23 @@ class LLMDynamicHandle(DynamicHandle):
                 # return {"payload": {"type": "channelSend", "channel_id": channel_id, "message": {"type": "cancel"}}}
                 return {"channel_id": channel_id, "message": {"type": "cancel"}}
             # HACK side effect of the decorator, easier to just eat an extra debug message
-            return {"channel_id": None, "message": None}
+            return self._port.send_channel_message(channel_id, {"type": "cancel"})
 
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
+
+        # TODO finish me
+        return self._port.create_channel(
+            "predict",
+            {
+                "modelSpecifier": model_specifier,
+                "context": context,
+                "predictionConfigStack": prediction_config_stack,
+            },
+            handle_fragments,
+            finished,
+            extra,
+        )
 
         return {
             "endpoint": "predict",
@@ -378,36 +389,37 @@ class LLMDynamicHandle(DynamicHandle):
             "extra": {"ongoing_prediction": ongoing_prediction},
         }
 
-    @sync_async_decorator(
-        obj_method="get_load_config", process_result=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1
-    )
     def unstable_get_context_length(self) -> int:
-        return {}
+        return self.get_load_config(callback=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("formatted", ""))
     def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
     ) -> str:
-        return {
-            "endpoint": "applyPromptTemplate",
-            "parameter": {
+        return self._port.call_rpc(
+            "applyPromptTemplate",
+            {
                 "specifier": self._specifier,
                 "context": context,
                 "opts": opts,
                 "predictionConfigStack": self._internal_kv_config_stack,
             },
-        }
+            lambda x: x.get("formatted", ""),
+        )
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokens", [-1]))
     def unstable_tokenize(self, input_string: str) -> List[int]:
         if not isinstance(input_string, str):
             logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
             raise ValueError("Input string must be a string.")
-        return {"endpoint": "tokenize", "parameter": {"specifier": self._specifier, "inputString": input_string}}
+        return self._port.call_rpc(
+            "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
+        )
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x.get("tokenCount", -1))
     def unstable_count_tokens(self, input_string: str) -> int:
         if not isinstance(input_string, str):
             logger.error(f"unstable_count_tokens: input_string must be a string, got {type(input_string)}")
             raise ValueError("Input string must be a string.")
-        return {"endpoint": "countTokens", "parameter": {"specifier": self._specifier, "inputString": input_string}}
+        return self._port.call_rpc(
+            "countTokens",
+            {"specifier": self._specifier, "inputString": input_string},
+            lambda x: x.get("tokenCount", -1),
+        )

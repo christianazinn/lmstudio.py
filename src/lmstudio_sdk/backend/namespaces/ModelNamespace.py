@@ -263,7 +263,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             "extra": extra,
         }
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def unload(self, identifier: str) -> None:
         """
         Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
@@ -274,20 +273,14 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         if not isinstance(identifier, str):
             logger.error(f"unload: identifier must be a string, got {type(identifier)}")
             raise ValueError("Identifier must be a string.")
-        return {"endpoint": "unloadModel", "parameter": {"identifier": identifier}}
+        return self._port.call_rpc("unloadModel", {"identifier": identifier}, lambda x: x)
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
-        return {"endpoint": "listLoaded", "parameter": None}
+        return self._port.call_rpc("listLoaded", None, lambda x: x)
 
-    # TODO: somehow you need to get self in there
-    @sync_async_decorator(
-        obj_method="call_rpc",
-        process_result=lambda x: x.get("extra").get("process_result")(x),
-    )
     def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
@@ -331,17 +324,15 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 raise Exception("Model not found")
             return self.create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
 
-        return {
-            "endpoint": "getModelInfo",
-            "parameter": {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
-            "extra": {
-                "process_result": lambda x: process_get_result(x),
-            },
-        }
+        return self._port.call_rpc(
+            "getModelInfo",
+            {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
+            lambda x: x.get("extra").get("process_result")(x),
+            extra={"process_result": process_get_result},
+        )
 
-    @sync_async_decorator(obj_method="get", process_result=lambda x: x)
     def unstable_get_any(self) -> TSpecificModel:
-        return {"query": {}}
+        return self.get({})
 
     # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(

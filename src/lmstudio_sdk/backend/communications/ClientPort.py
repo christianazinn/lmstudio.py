@@ -1,6 +1,8 @@
 import json
 import threading
 import websocket
+from typing import Any, Callable
+
 from .BaseClientPort import BaseClientPort
 from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
 
@@ -118,7 +120,14 @@ class ClientPort(BaseClientPort):
         return PseudoFuture()
 
     # TODO type hint for return type
-    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None = None):
+    def _call_rpc(
+        self,
+        payload: dict,
+        complete: threading.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None = None,
+    ):
         assert self._websocket is not None
         self._send_payload(payload)
         logger.debug(
@@ -135,7 +144,11 @@ class ClientPort(BaseClientPort):
             result.update({"extra": extra})
         else:
             result = {"result": result, "extra": extra}
-        return result
+
+        def process_result(x):
+            return x.get("result", x)
+
+        return process_result(callback(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

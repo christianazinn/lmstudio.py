@@ -1,6 +1,5 @@
-from typing import Optional
+from typing import Any, Callable, Optional
 from ...dataclasses import KVConfig, ModelDescriptor, ModelSpecifier
-from ...utils import sync_async_decorator
 from ..communications import BaseClientPort
 
 
@@ -22,9 +21,6 @@ class DynamicHandle:
         self._port = port
         self._specifier = specifier
 
-    @sync_async_decorator(
-        obj_method="call_rpc", process_result=lambda x: x.get("descriptor") if x is not None else None
-    )
     def get_model_info(self) -> Optional[ModelDescriptor]:
         """
         Gets the information of the model that is currently associated with this `LLMModel`. If no
@@ -33,8 +29,11 @@ class DynamicHandle:
         Note: As models are loaded/unloaded, the model associated with this `LLMModel` may change at
         any moment.
         """
-        return {"endpoint": "getModelInfo", "parameter": {"specifier": self._specifier, "throwIfNotFound": False}}
+        return self._port.call_rpc(
+            "getModelInfo",
+            {"specifier": self._specifier, "throwIfNotFound": False},
+            lambda x: x.get("descriptor", None) if x else None,
+        )
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
-    def get_load_config(self) -> KVConfig:
-        return {"endpoint": "getLoadConfig", "parameter": {"specifier": self._specifier}}
+    def get_load_config(self, callback: Callable[dict, Any] = lambda x: x) -> KVConfig:
+        return self._port.call_rpc("getLoadConfig", {"specifier": self._specifier}, lambda x: x)

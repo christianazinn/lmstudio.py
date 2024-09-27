@@ -19,9 +19,8 @@ class SystemNamespace:
     def close(self) -> None:
         return {}
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def list_downloaded_models(self) -> List[DownloadedModel]:
         """
         List all the models that have been downloaded.
         """
-        return {"endpoint": "listDownloadedModels", "parameter": None}
+        return self._port.call_rpc("listDownloadedModels", None, lambda x: x)

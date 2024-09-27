@@ -1,6 +1,7 @@
 import asyncio
 import json
 import websockets
+from typing import Any, Callable
 
 from .BaseClientPort import BaseClientPort
 from ...utils import get_logger, pretty_print, pretty_print_error, RPCError
@@ -108,7 +109,14 @@ class AsyncClientPort(BaseClientPort):
     def promise_event(self):
         return asyncio.Future()
 
-    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict, extra: dict | None = None):
+    async def _call_rpc(
+        self,
+        payload: dict,
+        complete: asyncio.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None = None,
+    ):
         await self._send_payload(payload)
         logger.debug(
             f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
@@ -124,7 +132,11 @@ class AsyncClientPort(BaseClientPort):
             result.update({"extra": extra})
         else:
             result = {"result": result, "extra": extra}
-        return result
+
+        def process_result(x):
+            return x.get("result", x)
+
+        return process_result(callback(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort
