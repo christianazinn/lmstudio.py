@@ -72,9 +72,13 @@ class AsyncLMStudioClient(LMStudioClient):
         self.create_ports(True)
 
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
-        await asyncio.gather(
-            self.llm.connect(), self.embedding.connect(), self.system.connect(), self.diagnostics.connect()
-        )
+        try:
+            await asyncio.gather(
+                self.llm.connect(), self.embedding.connect(), self.system.connect(), self.diagnostics.connect()
+            )
+        except ConnectionRefusedError:
+            logger.error(f"Failed to connect to LM Studio server at {self.base_url}.")
+            raise ValueError(f"Failed to connect to LM Studio server at {self.base_url}.")
         logger.info("Connected to LM Studio server.")
 
         return self

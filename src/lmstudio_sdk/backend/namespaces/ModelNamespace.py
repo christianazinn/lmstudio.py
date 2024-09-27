@@ -141,11 +141,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
 
     @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
-        pass
+        return {}
 
     @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
-        pass
+        return {}
 
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an

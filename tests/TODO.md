@@ -1,9 +1,6 @@
 for each of sync, async:
 
-- test client constructors
 - test methods:
-  - system:
-    - list_downloaded_models
   - llm and embedding:
     - load
     - unload

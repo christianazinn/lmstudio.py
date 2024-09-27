@@ -67,6 +67,10 @@ class LMStudioClient(ABC):
         pass
 
     @abstractmethod
+    def connect(self):
+        pass
+
+    @abstractmethod
     def close(self):
         pass
 

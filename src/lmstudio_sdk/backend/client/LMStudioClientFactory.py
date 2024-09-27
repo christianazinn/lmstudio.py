@@ -1,4 +1,5 @@
 import inspect
+from .LMStudioClient import LMStudioClient as LMStudioClientBase
 from .AsyncLMStudioClient import AsyncLMStudioClient
 from .SyncLMStudioClient import SyncLMStudioClient
 
@@ -8,7 +9,7 @@ def LMStudioClient(
     base_url: str | None = None,
     client_identifier: str | None = None,
     client_passkey: str | None = None,
-) -> AsyncLMStudioClient | SyncLMStudioClient:
+) -> LMStudioClientBase:
     """
     Constructs an instance of either `AsyncLMStudioClient` or `SyncLMStudioClient`. Just `await` for async!
     """
@@ -18,4 +19,4 @@ def LMStudioClient(
         if is_async
         else SyncLMStudioClient(base_url, client_identifier, client_passkey)
     )
-    return client.connect() if is_async else client
+    return client.connect()

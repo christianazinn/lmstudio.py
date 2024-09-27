@@ -7,3 +7,4 @@ TODO: sync code does not respect SIGINT
 TODO: type hints
 TODO: README + docs
 TODO: preprocessors
+TODO: base namespace (connect, close, port) and make it generic TClientPort
