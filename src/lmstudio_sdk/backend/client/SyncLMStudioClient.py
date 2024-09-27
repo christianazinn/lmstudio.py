@@ -51,22 +51,29 @@ class SyncLMStudioClient(LMStudioClient):
         client_passkey: str | None,
     ):
         super().__init__(base_url, client_identifier, client_passkey)
+
+    def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
             self.base_url = self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
         self.create_ports(False)
-
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
-        self.llm.connect()
-        logger.debug("LLM port connected, connecting to embedding port...")
-        self.embedding.connect()
-        logger.debug("Embedding port connected, connecting to system port...")
-        self.system.connect()
-        logger.debug("System port connected, connecting to diagnostics port...")
-        self.diagnostics.connect()
-        logger.info("Connected to LM Studio server.")
+        try:
+            self.llm.connect()
+            logger.debug("LLM port connected, connecting to embedding port...")
+            self.embedding.connect()
+            logger.debug("Embedding port connected, connecting to system port...")
+            self.system.connect()
+            logger.debug("System port connected, connecting to diagnostics port...")
+            self.diagnostics.connect()
+            logger.info("Connected to LM Studio server.")
+        except ConnectionRefusedError:
+            logger.error(f"Failed to connect to LM Studio server at {self.base_url}.")
+            raise ValueError(f"Failed to connect to LM Studio server at {self.base_url}.")
+
+        return self
 
     def close(self):
         logger.info(f"Closing connection to LM Studio server at {self.base_url}...")

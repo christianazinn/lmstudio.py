@@ -131,7 +131,10 @@ class ClientPort(BaseClientPort):
             raise RPCError(f"Error in RPC call: {result.get('error').get('title', 'Unknown error')}")
 
         result = result.get("result", result)
-        result.update({"extra": extra})
+        if isinstance(result, dict):
+            result.update({"extra": extra})
+        else:
+            result = {"result": result, "extra": extra}
         return result
 
 
