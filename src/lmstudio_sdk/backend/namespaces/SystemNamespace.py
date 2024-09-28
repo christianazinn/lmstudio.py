@@ -11,13 +11,11 @@ class SystemNamespace:
     def __init__(self, port: BaseClientPort):
         self._port = port
 
-    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
-        return {}
+        return self._port.connect()
 
-    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
-        return {}
+        return self._port.close()
 
     def list_downloaded_models(self) -> List[DownloadedModel]:
         """

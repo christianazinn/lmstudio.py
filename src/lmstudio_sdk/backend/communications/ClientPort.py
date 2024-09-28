@@ -146,7 +146,9 @@ class ClientPort(BaseClientPort):
             result = {"result": result, "extra": extra}
 
         def process_result(x):
-            return x.get("result", x)
+            if isinstance(x, dict):
+                return x.get("result", x)
+            return x
 
         return process_result(callback(result))
 

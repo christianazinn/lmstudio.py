@@ -139,13 +139,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             self._port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
 
-    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
-        return {}
+        return self._port.connect()
 
-    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
-        return {}
+        return self._port.close()
 
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
@@ -188,7 +186,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-    @sync_async_decorator(obj_method="create_channel", process_result=load_process_result)
     def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         promise = self._port.promise_event()
         full_path: str = path
@@ -230,12 +227,12 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
                 reject(ChannelError(message.get("error").get("title")))
 
-        @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
+        # TODO fix abort callbacks in new design pattern
         def cancel_send(channel_id):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             # we choose not to reject with an Exception because the user should not have to handle it
             resolve(None)
-            return {"channel_id": channel_id, "message": {"type": "cancel"}}
+            return self._port.send_channel_message(channel_id, {"type": "cancel"})
 
         extra = {"is_async": self._port.is_async(), "promise": promise}
         if opts and "signal" in opts:
@@ -243,11 +240,10 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             if signal is not None:
                 extra.update({"signal": signal, "cancel_send": cancel_send})
 
-        return {
-            "endpoint": "loadModel",
-            "creation_parameter": {
+        return self._port.create_channel(
+            "loadModel",
+            {
                 "path": path,
-                "identifier": opts["identifier"] if opts and "identifier" in opts else path,
                 "loadConfigStack": {
                     "layers": [
                         {
@@ -259,9 +255,10 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                     ]
                 },
             },
-            "handler": handle_message,
-            "extra": extra,
-        }
+            handle_message,
+            lambda x: load_process_result(x),
+            extra=extra,
+        )
 
     def unload(self, identifier: str) -> None:
         """

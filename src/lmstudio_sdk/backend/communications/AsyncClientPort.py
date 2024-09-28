@@ -95,12 +95,16 @@ class AsyncClientPort(BaseClientPort):
         finally:
             self.running = False
 
-    async def _send_payload(self, payload: dict, extra: dict | None = None):
+    async def _send_payload(
+        self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None
+    ):
         if not self._websocket:
             logger.error("Attempted to send payload, but WebSocket connection is not established.")
             raise ValueError("WebSocket connection not established.")
         logger.send(f"Sending payload on async port {self.endpoint}:\n{pretty_print(payload)}")
         await self._websocket.send(json.dumps(payload))
+        if callback:
+            return callback(extra)
         return extra
 
     def _rpc_complete_event(self):
@@ -134,7 +138,9 @@ class AsyncClientPort(BaseClientPort):
             result = {"result": result, "extra": extra}
 
         def process_result(x):
-            return x.get("result", x)
+            if isinstance(x, dict):
+                return x.get("result", x)
+            return x
 
         return process_result(callback(result))
 

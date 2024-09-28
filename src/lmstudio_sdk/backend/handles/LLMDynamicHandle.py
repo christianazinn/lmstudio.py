@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple
+from typing import Any, Callable, List, Tuple
 from functools import partial
 
 from ...dataclasses import (
@@ -25,7 +25,6 @@ from ...utils import (
     get_logger,
     number_to_checkbox_numeric,
     pretty_print_error,
-    sync_async_decorator,
 )
 from .DynamicHandle import DynamicHandle
 
@@ -123,7 +122,6 @@ class LLMDynamicHandle(DynamicHandle):
             ]
         }
 
-    @sync_async_decorator(obj_method="create_channel", process_result=predict_internal_process_result)
     def _predict_internal(
         self,
         model_specifier: ModelSpecifier,
@@ -134,6 +132,7 @@ class LLMDynamicHandle(DynamicHandle):
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
+        callback: Callable[[dict], Any],
         extra: dict | None = None,
     ):
         finished = self._port._rpc_complete_event()
@@ -171,6 +170,7 @@ class LLMDynamicHandle(DynamicHandle):
                 logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
                 on_error(ChannelError(message.get("error").get("title")))
 
+        # TODO abort callbacks in new design pattern
         def cancel_send(channel_id):
             print(channel_id)
             import traceback
@@ -186,7 +186,6 @@ class LLMDynamicHandle(DynamicHandle):
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
 
-        # TODO finish me
         return self._port.create_channel(
             "predict",
             {
@@ -195,23 +194,10 @@ class LLMDynamicHandle(DynamicHandle):
                 "predictionConfigStack": prediction_config_stack,
             },
             handle_fragments,
-            finished,
+            lambda x: callback(predict_internal_process_result(x)),
             extra,
         )
 
-        return {
-            "endpoint": "predict",
-            "creation_parameter": {
-                "modelSpecifier": model_specifier,
-                "context": context,
-                "predictionConfigStack": prediction_config_stack,
-            },
-            "handler": handle_fragments,
-            "extra": extra,
-        }
-
-    # TODO abort callbacks
-    @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
     def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts):
         """
         Use the loaded model to predict text.
@@ -291,21 +277,21 @@ class LLMDynamicHandle(DynamicHandle):
             }
         )
 
-        return {
-            "model_specifier": self._specifier,
-            "context": self._resolve_conversation_context(prompt),
-            "prediction_config_stack": {"layers": prediction_layers},
-            "cancel_event": cancel_event,
-            "extra_opts": extra_opts,
-            "on_fragment": lambda fragment: push(fragment),
-            "on_finished": lambda stats, model_info, load_model_config, prediction_config: finished(
+        return self._predict_internal(
+            self._specifier,
+            self._resolve_completion_context(prompt),
+            {"layers": prediction_layers},
+            cancel_event,
+            extra_opts,
+            lambda fragment: push(fragment),
+            lambda stats, model_info, load_model_config, prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
-            "on_error": lambda error: failed(error),
-            "extra": {"ongoing_prediction": ongoing_prediction},
-        }
+            lambda error: failed(error),
+            lambda x: x.get("ongoing_prediction"),
+            extra={"ongoing_prediction": ongoing_prediction},
+        )
 
-    @sync_async_decorator(obj_method="predict", process_result=lambda x: x)
     def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts):
         """
         Use the loaded model to generate a response based on the given history.
@@ -356,9 +342,8 @@ class LLMDynamicHandle(DynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        return {"context": self._resolve_conversation_context(history), "opts": opts}
+        return self.predict(self._resolve_conversation_context(history), opts)
 
-    @sync_async_decorator(obj_method="_predict_internal", process_result=lambda x: x.get("ongoing_prediction"))
     def predict(self, context: LLMContext, opts: LLMPredictionOpts):
         config, extra_opts = self.split_opts(opts)
 
@@ -375,19 +360,20 @@ class LLMDynamicHandle(DynamicHandle):
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(api_override_layer)
 
-        return {
-            "model_specifier": self._specifier,
-            "context": context,
-            "prediction_config_stack": {"layers": prediction_layers},
-            "cancel_event": cancel_event,
-            "extra_opts": extra_opts,
-            "on_fragment": lambda fragment: push(fragment),
-            "on_finished": lambda stats, model_info, load_model_config, prediction_config: finished(
+        return self._predict_internal(
+            self._specifier,
+            context,
+            {"layers": prediction_layers},
+            cancel_event,
+            extra_opts,
+            lambda fragment: push(fragment),
+            lambda stats, model_info, load_model_config, prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
-            "on_error": lambda error: failed(error),
-            "extra": {"ongoing_prediction": ongoing_prediction},
-        }
+            lambda error: failed(error),
+            lambda x: x.get("ongoing_prediction"),
+            extra={"ongoing_prediction": ongoing_prediction},
+        )
 
     def unstable_get_context_length(self) -> int:
         return self.get_load_config(callback=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)

@@ -2,7 +2,7 @@ import threading
 import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict
-from ...utils import get_logger, PseudoFuture, sync_async_decorator
+from ...utils import get_logger, PseudoFuture
 
 
 logger = get_logger(__name__)
@@ -33,7 +33,7 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: dict | None):
+    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
         pass
 
     @abstractmethod
@@ -74,7 +74,6 @@ class BaseClientPort(ABC):
 
     # TODO endpoint enum
     # TODO: this is an absolutely atrocious design pattern with extra, figure it out
-    @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def create_channel(
         self,
         endpoint: str,
@@ -98,9 +97,8 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return {"payload": payload, "extra": {"channelId": channel_id, "extra": extra}}
+        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, callback=callback)
 
-    @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
         payload = {
@@ -110,7 +108,8 @@ class BaseClientPort(ABC):
         }
         logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
 
-        return {"payload": payload}
+        # TODO: callback handling in channel method?
+        return self._send_payload(payload)
 
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
