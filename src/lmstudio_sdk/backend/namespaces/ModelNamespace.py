@@ -31,15 +31,15 @@ from ..handles import (
     SpecificModel,
 )
 from ..communications import BaseClientPort
+from .BaseNamespace import BaseNamespace, TClientPort
 
 
 logger = get_logger(__name__)
 
 
-TClientPort = TypeVar("TClientPort", bound="BaseClientPort")
 TLoadModelConfig = TypeVar("TLoadModelConfig")
-TDynamicHandle = TypeVar("TDynamicHandle", bound="DynamicHandle")
-TSpecificModel = TypeVar("TSpecificModel", bound="SpecificModel")
+TDynamicHandle = TypeVar("TDynamicHandle", bound=DynamicHandle)
+TSpecificModel = TypeVar("TSpecificModel", bound=SpecificModel)
 
 
 def load_process_result(extra):
@@ -55,7 +55,9 @@ def load_process_result(extra):
     return extra.get("promise").result()
 
 
-class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
+class ModelNamespace(
+    BaseNamespace[TClientPort], Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC
+):
     """
     Abstract namespace for namespaces that deal with models.
 
@@ -64,10 +66,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
 
     _namespace: ModelDomainType
     _default_load_config: TLoadModelConfig
-    _port: TClientPort
-
-    def __init__(self, port: TClientPort):
-        self._port = port
 
     @abstractmethod
     def load_config_to_kv_config(self, config: TLoadModelConfig) -> KVConfig:
@@ -146,12 +144,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         return self.create_domain_dynamic_handle(
             self._port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
-
-    def connect(self) -> None:
-        return self._port.connect()
-
-    def close(self) -> None:
-        return self._port.close()
 
     def load(
         self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
@@ -360,7 +352,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
 
 # TODO custom ports with type locks
 class EmbeddingNamespace(
-    ModelNamespace[TClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
+    ModelNamespace[BaseClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
 ):
     _namespace = "embedding"
     _default_load_config: EmbeddingLoadModelConfig = {}
@@ -390,7 +382,7 @@ class EmbeddingNamespace(
 
 
 class LLMNamespace(
-    ModelNamespace[TClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel],
+    ModelNamespace[BaseClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel],
 ):
     _namespace = "llm"
     _default_load_config: LLMLoadModelConfig = {}

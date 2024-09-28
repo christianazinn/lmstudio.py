@@ -1,5 +1,8 @@
 from typing import Callable, Literal, TypedDict
 
+from ..communications import BaseClientPort
+from .BaseNamespace import BaseNamespace
+
 
 class DiagnosticsLogEventData(TypedDict):
     type: Literal["llm.prediction.input"]
@@ -13,16 +16,7 @@ class DiagnosticsLogEvent(TypedDict):
     data: DiagnosticsLogEventData
 
 
-class DiagnosticsNamespace:
-    def __init__(self, port):
-        self._port = port
-
-    def connect(self):
-        return self._port.connect()
-
-    def close(self):
-        return self._port.close()
-
+class DiagnosticsNamespace(BaseNamespace[BaseClientPort]):
     # TODO make me work
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
         """
