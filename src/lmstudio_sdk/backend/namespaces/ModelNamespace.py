@@ -31,7 +31,7 @@ from ..handles import (
     SpecificModel,
 )
 from ..communications import BaseClientPort
-from .BaseNamespace import BaseNamespace, TClientPort
+from .BaseNamespace import BaseNamespace
 
 
 logger = get_logger(__name__)
@@ -55,9 +55,7 @@ def load_process_result(extra):
     return extra.get("promise").result()
 
 
-class ModelNamespace(
-    BaseNamespace[TClientPort], Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC
-):
+class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
     """
     Abstract namespace for namespaces that deal with models.
 
@@ -76,7 +74,7 @@ class ModelNamespace(
 
     @abstractmethod
     def _create_domain_specific_model(
-        self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> TSpecificModel:
         """
         Method for creating a domain-specific model.
@@ -84,7 +82,7 @@ class ModelNamespace(
         pass
 
     @abstractmethod
-    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
         """
         Method for creating a domain-specific dynamic handle.
         """
@@ -352,7 +350,7 @@ class ModelNamespace(
 
 # TODO custom ports with type locks
 class EmbeddingNamespace(
-    ModelNamespace[BaseClientPort, EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
+    ModelNamespace[EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
 ):
     _namespace = "embedding"
     _default_load_config: EmbeddingLoadModelConfig = {}
@@ -373,16 +371,16 @@ class EmbeddingNamespace(
         return convert_dict_to_kv_config(fields)
 
     def _create_domain_specific_model(
-        self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
-    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
 class LLMNamespace(
-    ModelNamespace[BaseClientPort, LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel],
+    ModelNamespace[LLMLoadModelConfig, LLMDynamicHandle, LLMSpecificModel],
 ):
     _namespace = "llm"
     _default_load_config: LLMLoadModelConfig = {}
@@ -416,11 +414,11 @@ class LLMNamespace(
         return convert_dict_to_kv_config(fields)
 
     def _create_domain_specific_model(
-        self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> LLMSpecificModel:
         return LLMSpecificModel(port, instance_reference, descriptor)
 
-    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
 
     # TODO registerPromptPreprocessor
