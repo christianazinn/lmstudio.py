@@ -8,3 +8,4 @@ TODO: type hints
 TODO: README + docs
 TODO: preprocessors
 TODO: base namespace (connect, close, port) and make it generic TClientPort
+TODO: base OngoingPrediction or union type?

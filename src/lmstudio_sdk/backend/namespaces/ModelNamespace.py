@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from functools import partial
 from time import time
-from typing import Generic, List, TypeVar, Union
+from typing import Any, Coroutine, Generic, List, TypeVar, Union
 
 from ...dataclasses import (
     BaseLoadModelOpts,
@@ -21,9 +20,15 @@ from ...utils import (
     number_to_checkbox_numeric,
     pretty_print,
     pretty_print_error,
-    sync_async_decorator,
 )
-from ..handles import EmbeddingDynamicHandle, EmbeddingSpecificModel, DynamicHandle, LLMDynamicHandle, LLMSpecificModel
+from ..handles import (
+    EmbeddingDynamicHandle,
+    EmbeddingSpecificModel,
+    DynamicHandle,
+    LLMDynamicHandle,
+    LLMSpecificModel,
+    SpecificModel,
+)
 from ..communications import BaseClientPort
 
 
@@ -33,14 +38,16 @@ logger = get_logger(__name__)
 TClientPort = TypeVar("TClientPort", bound="BaseClientPort")
 TLoadModelConfig = TypeVar("TLoadModelConfig")
 TDynamicHandle = TypeVar("TDynamicHandle", bound="DynamicHandle")
-TSpecificModel = TypeVar("TSpecificModel")
+TSpecificModel = TypeVar("TSpecificModel", bound="SpecificModel")
 
 
 def load_process_result(extra):
-    channel_id = extra.get("channel_id")
+    logger.debug(extra)
+    channel_id = extra.get("channelId")
     extra = extra.get("extra")
     if "signal" in extra:
-        extra.get("signal").add_listener(partial(extra.get("cancel_send"), channel_id))
+        extra.get("signal").add_listener(lambda: extra.get("cancel_send")(channel_id))
+        logger.debug(f"Added cancel listener for channel {channel_id}.")
     if extra.get("is_async"):
         return extra.get("promise")
     # handling PseudoFuture
@@ -145,6 +152,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
     def close(self) -> None:
         return self._port.close()
 
+    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
         optional object with additional options. By default, the model is loaded with the default
@@ -186,7 +194,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         promise = self._port.promise_event()
         full_path: str = path
         start_time: float = 0
@@ -227,7 +234,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
                 reject(ChannelError(message.get("error").get("title")))
 
-        # TODO fix abort callbacks in new design pattern
         def cancel_send(channel_id):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             # we choose not to reject with an Exception because the user should not have to handle it
@@ -278,7 +284,7 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         """
         return self._port.call_rpc("listLoaded", None, lambda x: x)
 
-    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
+    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel | Coroutine[Any, Any, TSpecificModel]:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.

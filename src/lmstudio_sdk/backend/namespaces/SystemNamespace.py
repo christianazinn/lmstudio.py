@@ -1,7 +1,6 @@
 from typing import List
 
 from ...dataclasses import DownloadedModel
-from ...utils import sync_async_decorator
 from ..communications import BaseClientPort
 
 

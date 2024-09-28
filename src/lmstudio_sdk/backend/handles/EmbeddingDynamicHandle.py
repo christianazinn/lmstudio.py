@@ -1,7 +1,7 @@
 from typing import List
 
 from ...dataclasses import find_key_in_kv_config
-from ...utils import get_logger, sync_async_decorator
+from ...utils import get_logger
 from .DynamicHandle import DynamicHandle
 
 

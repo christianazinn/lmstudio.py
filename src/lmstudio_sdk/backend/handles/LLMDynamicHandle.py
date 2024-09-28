@@ -23,9 +23,11 @@ from ...utils import (
     BufferedEvent,
     ChannelError,
     get_logger,
+    LiteralOrCoroutine,
     number_to_checkbox_numeric,
     pretty_print_error,
 )
+from ..communications import BaseOngoingPrediction
 from .DynamicHandle import DynamicHandle
 
 
@@ -134,7 +136,7 @@ class LLMDynamicHandle(DynamicHandle):
         on_error: Callable[[Exception], None],
         callback: Callable[[dict], Any],
         extra: dict | None = None,
-    ):
+    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         finished = self._port._rpc_complete_event()
         is_first_token = True
 
@@ -170,18 +172,12 @@ class LLMDynamicHandle(DynamicHandle):
                 logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
                 on_error(ChannelError(message.get("error").get("title")))
 
-        # TODO abort callbacks in new design pattern
         def cancel_send(channel_id):
-            print(channel_id)
-            import traceback
-
-            traceback.print_stack()
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             if not finished.is_set():
-                # return {"payload": {"type": "channelSend", "channel_id": channel_id, "message": {"type": "cancel"}}}
-                return {"channel_id": channel_id, "message": {"type": "cancel"}}
+                return self._port.send_channel_message(channel_id, {"type": "cancel"})
             # HACK side effect of the decorator, easier to just eat an extra debug message
-            return self._port.send_channel_message(channel_id, {"type": "cancel"})
+            return self._port.send_channel_message(None, None)
 
         extra = extra or {}
         extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
@@ -198,7 +194,9 @@ class LLMDynamicHandle(DynamicHandle):
             extra,
         )
 
-    def complete(self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts):
+    def complete(
+        self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts
+    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         """
         Use the loaded model to predict text.
 
@@ -292,7 +290,9 @@ class LLMDynamicHandle(DynamicHandle):
             extra={"ongoing_prediction": ongoing_prediction},
         )
 
-    def respond(self, history: LLMConversationContextInput, opts: LLMPredictionOpts):
+    def respond(
+        self, history: LLMConversationContextInput, opts: LLMPredictionOpts
+    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         """
         Use the loaded model to generate a response based on the given history.
 
@@ -344,7 +344,7 @@ class LLMDynamicHandle(DynamicHandle):
         """
         return self.predict(self._resolve_conversation_context(history), opts)
 
-    def predict(self, context: LLMContext, opts: LLMPredictionOpts):
+    def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         config, extra_opts = self.split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
@@ -375,12 +375,12 @@ class LLMDynamicHandle(DynamicHandle):
             extra={"ongoing_prediction": ongoing_prediction},
         )
 
-    def unstable_get_context_length(self) -> int:
+    def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
         return self.get_load_config(callback=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
 
     def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
-    ) -> str:
+    ) -> LiteralOrCoroutine[str]:
         return self._port.call_rpc(
             "applyPromptTemplate",
             {
@@ -392,7 +392,7 @@ class LLMDynamicHandle(DynamicHandle):
             lambda x: x.get("formatted", ""),
         )
 
-    def unstable_tokenize(self, input_string: str) -> List[int]:
+    def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
         if not isinstance(input_string, str):
             logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
             raise ValueError("Input string must be a string.")
@@ -400,7 +400,7 @@ class LLMDynamicHandle(DynamicHandle):
             "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
         )
 
-    def unstable_count_tokens(self, input_string: str) -> int:
+    def unstable_count_tokens(self, input_string: str) -> LiteralOrCoroutine[int]:
         if not isinstance(input_string, str):
             logger.error(f"unstable_count_tokens: input_string must be a string, got {type(input_string)}")
             raise ValueError("Input string must be a string.")

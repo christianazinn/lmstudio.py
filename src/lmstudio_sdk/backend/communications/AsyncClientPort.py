@@ -78,7 +78,6 @@ class AsyncClientPort(BaseClientPort):
                         del self.channel_handlers[channel_id]
 
                 # RPC endpoints
-                # TODO: error handling
                 elif data_type == "rpcResult" or data_type == "rpcError":
                     call_id = data.get("callId", -1)
                     if call_id in self.rpc_handlers:
@@ -113,6 +112,7 @@ class AsyncClientPort(BaseClientPort):
     def promise_event(self):
         return asyncio.Future()
 
+    # TODO type hint for return type
     async def _call_rpc(
         self,
         payload: dict,

@@ -1,15 +1,14 @@
 import inspect
-from .LMStudioClient import LMStudioClient as LMStudioClientBase
+from typing import Any, Coroutine
 from .AsyncLMStudioClient import AsyncLMStudioClient
 from .SyncLMStudioClient import SyncLMStudioClient
 
 
-# pseudo-constructor haha - also awaitable!
 def LMStudioClient(
     base_url: str | None = None,
     client_identifier: str | None = None,
     client_passkey: str | None = None,
-) -> LMStudioClientBase:
+) -> SyncLMStudioClient | Coroutine[Any, Any, AsyncLMStudioClient]:
     """
     Constructs an instance of either `AsyncLMStudioClient` or `SyncLMStudioClient`. Just `await` for async!
     """
