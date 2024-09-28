@@ -60,7 +60,7 @@ class LLMDynamicHandle(DynamicHandle):
 
     _internal_kv_config_stack = KVConfigStack(layers=[])
 
-    def prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
+    def __prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
         fields = []
         if prediction_config is not None:
             # HACK i hate this
@@ -105,7 +105,7 @@ class LLMDynamicHandle(DynamicHandle):
                 fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
         return {"fields": fields}
 
-    def split_opts(self, opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+    def __split_opts(self, opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
         extra_opts: LLMPredictionExtraOpts = {}
         for key in ["on_prompt_processing_progress", "on_first_token"]:
             if key in opts:
@@ -113,10 +113,10 @@ class LLMDynamicHandle(DynamicHandle):
                 del opts[key]
         return opts, extra_opts
 
-    def _resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
+    def __resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
         return {"history": [{"role": "user", "content": [{"type": "text", "text": contextInput}]}]}
 
-    def _resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
+    def __resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
         return {
             "history": [
                 {"role": item.get("role", "user"), "content": [{"type": "text", "text": item.get("content", "")}]}
@@ -124,7 +124,7 @@ class LLMDynamicHandle(DynamicHandle):
             ]
         }
 
-    def _predict_internal(
+    def __predict_internal(
         self,
         model_specifier: ModelSpecifier,
         context: LLMContext,
@@ -242,7 +242,7 @@ class LLMDynamicHandle(DynamicHandle):
         :param prompt: The prompt to use for prediction.
         :param opts: Options for the prediction.
         """
-        config, extra_opts = self.split_opts(opts)
+        config, extra_opts = self.__split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         if self._port.is_async():
@@ -254,7 +254,9 @@ class LLMDynamicHandle(DynamicHandle):
         config["stop_strings"] = []
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            {"layerName": KVConfigLayerName.API_OVERRIDE, "config": self.prediction_config_to_kv_config(config)}
+            KVConfigStackLayer(
+                layerName=KVConfigLayerName.API_OVERRIDE, config=self.__prediction_config_to_kv_config(config)
+            )
         )
         prediction_layers.append(
             {
@@ -275,9 +277,9 @@ class LLMDynamicHandle(DynamicHandle):
             }
         )
 
-        return self._predict_internal(
+        return self.__predict_internal(
             self._specifier,
-            self._resolve_completion_context(prompt),
+            self.__resolve_completion_context(prompt),
             {"layers": prediction_layers},
             cancel_event,
             extra_opts,
@@ -342,10 +344,10 @@ class LLMDynamicHandle(DynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        return self.predict(self._resolve_conversation_context(history), opts)
+        return self.predict(self.__resolve_conversation_context(history), opts)
 
     def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> LiteralOrCoroutine[BaseOngoingPrediction]:
-        config, extra_opts = self.split_opts(opts)
+        config, extra_opts = self.__split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
         if self._port.is_async():
@@ -354,13 +356,14 @@ class LLMDynamicHandle(DynamicHandle):
             from ..communications import OngoingPrediction
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
-        api_override_layer = KVConfigStackLayer(
-            layerName=KVConfigLayerName.API_OVERRIDE, config=self.prediction_config_to_kv_config(config)
-        )
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
-        prediction_layers.append(api_override_layer)
+        prediction_layers.append(
+            KVConfigStackLayer(
+                layerName=KVConfigLayerName.API_OVERRIDE, config=self.__prediction_config_to_kv_config(config)
+            )
+        )
 
-        return self._predict_internal(
+        return self.__predict_internal(
             self._specifier,
             context,
             {"layers": prediction_layers},

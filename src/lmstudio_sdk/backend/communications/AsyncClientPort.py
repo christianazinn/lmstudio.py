@@ -32,7 +32,7 @@ class AsyncClientPort(BaseClientPort):
         )
         self.running = True
         logger.websocket(f"Async port {self.endpoint} is authenticated. Establishing receive task.")
-        self.receive_task = asyncio.create_task(self.receive_messages())
+        self.receive_task = asyncio.create_task(self.__receive_messages())
 
     async def close(self):
         self.running = False
@@ -48,7 +48,7 @@ class AsyncClientPort(BaseClientPort):
             except asyncio.TimeoutError:
                 logger.error(f"Receive task did not complete in time on async port {self.endpoint}!")
 
-    async def receive_messages(self):
+    async def __receive_messages(self):
         try:
             while self.running:
                 assert self._websocket is not None
@@ -109,7 +109,7 @@ class AsyncClientPort(BaseClientPort):
     def _rpc_complete_event(self):
         return asyncio.Event()
 
-    def promise_event(self):
+    def _promise_event(self):
         return asyncio.Future()
 
     # TODO type hint for return type

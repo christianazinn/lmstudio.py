@@ -68,14 +68,14 @@ class ModelNamespace(
     _default_load_config: TLoadModelConfig
 
     @abstractmethod
-    def load_config_to_kv_config(self, config: TLoadModelConfig) -> KVConfig:
+    def _load_config_to_kv_config(self, config: TLoadModelConfig) -> KVConfig:
         """
         Method for converting the domain-specific load config to KVConfig.
         """
         pass
 
     @abstractmethod
-    def create_domain_specific_model(
+    def _create_domain_specific_model(
         self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> TSpecificModel:
         """
@@ -84,7 +84,7 @@ class ModelNamespace(
         pass
 
     @abstractmethod
-    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
         """
         Method for creating a domain-specific dynamic handle.
         """
@@ -133,7 +133,7 @@ class ModelNamespace(
                 logger.error(f"Model path should not contain backslashes, received: {path}")
                 raise ValueError("Model path should not contain backslashes.")
 
-        return self.create_domain_dynamic_handle(self._port, {"type": "query", "query": query})
+        return self._create_domain_dynamic_handle(self._port, {"type": "query", "query": query})
 
     def create_dynamic_handle_from_instance_reference(self, instance_reference: str) -> TDynamicHandle:
         """
@@ -141,7 +141,7 @@ class ModelNamespace(
 
         :alpha:
         """
-        return self.create_domain_dynamic_handle(
+        return self._create_domain_dynamic_handle(
             self._port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
 
@@ -189,7 +189,7 @@ class ModelNamespace(
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-        promise = self._port.promise_event()
+        promise = self._port._promise_event()
         full_path: str = path
         start_time: float = 0
 
@@ -212,7 +212,7 @@ class ModelNamespace(
             elif message_type == "success":
                 logger.debug(f"Model {full_path} loaded in {time() - start_time:.3f}s.")
                 resolve(
-                    self.create_domain_specific_model(
+                    self._create_domain_specific_model(
                         self._port,
                         message.get("instanceReference"),
                         {"identifier": message.get("identifier"), "path": path},
@@ -249,7 +249,7 @@ class ModelNamespace(
                     "layers": [
                         {
                             "layerName": KVConfigLayerName.API_OVERRIDE,
-                            "config": self.load_config_to_kv_config(
+                            "config": self._load_config_to_kv_config(
                                 opts["config"] if opts and "config" in opts else self._default_load_config
                             ),
                         }
@@ -320,7 +320,7 @@ class ModelNamespace(
             if not x or x is None:
                 logger.error(f"Model not found for query: {pretty_print(query)}")
                 raise Exception("Model not found")
-            return self.create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
+            return self._create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
 
         return self._port.call_rpc(
             "getModelInfo",
@@ -357,7 +357,7 @@ class EmbeddingNamespace(
     _namespace = "embedding"
     _default_load_config: EmbeddingLoadModelConfig = {}
 
-    def load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
+    def _load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
         fields = {
             "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
             "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
@@ -372,12 +372,12 @@ class EmbeddingNamespace(
             fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(config.get("rope_frequency_scale"), 0, 0)
         return convert_dict_to_kv_config(fields)
 
-    def create_domain_specific_model(
+    def _create_domain_specific_model(
         self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
@@ -387,7 +387,7 @@ class LLMNamespace(
     _namespace = "llm"
     _default_load_config: LLMLoadModelConfig = {}
 
-    def load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
+    def _load_config_to_kv_config(self, config: LLMLoadModelConfig) -> KVConfig:
         fields = {
             "llm.load.contextLength": config.get("context_length"),
             "llama.evalBatchSize": config.get("eval_batch_size"),
@@ -415,12 +415,12 @@ class LLMNamespace(
             fields["llama.seed"] = number_to_checkbox_numeric(config.get("seed"), -1, 0)
         return convert_dict_to_kv_config(fields)
 
-    def create_domain_specific_model(
+    def _create_domain_specific_model(
         self, port: TClientPort, instance_reference: str, descriptor: ModelDescriptor
     ) -> LLMSpecificModel:
         return LLMSpecificModel(port, instance_reference, descriptor)
 
-    def create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
+    def _create_domain_dynamic_handle(self, port: TClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
 
     # TODO registerPromptPreprocessor

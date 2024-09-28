@@ -62,14 +62,13 @@ class AsyncLMStudioClient(LMStudioClient):
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 
-    # TODO: remind user to connect()
     async def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
             self.base_url = await self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
-        self.create_ports(True)
+        self._create_ports(True)
 
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         try:

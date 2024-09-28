@@ -52,18 +52,18 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def promise_event(self) -> asyncio.Future | PseudoFuture:
+    def _promise_event(self) -> asyncio.Future | PseudoFuture:
         pass
 
     @classmethod
-    def get_next_channel_id(cls):
+    def __get_next_channel_id(cls):
         with cls.__channel_id_lock:
             channel_id = cls.__next_channel_id
             cls.__next_channel_id += 1
         return channel_id
 
     @classmethod
-    def get_next_rpc_call_id(cls):
+    def __get_next_rpc_call_id(cls):
         with cls.__rpc_call_id_lock:
             call_id = cls.__next_rpc_call_id
             cls.__next_rpc_call_id += 1
@@ -83,7 +83,7 @@ class BaseClientPort(ABC):
         extra: dict | None = None,
     ) -> int:
         assert self._websocket is not None
-        channel_id = self.get_next_channel_id()
+        channel_id = self.__get_next_channel_id()
         payload = {
             "type": "channelCreate",
             "endpoint": endpoint,
@@ -127,7 +127,7 @@ class BaseClientPort(ABC):
             result.update(data)
             complete.set()
 
-        call_id = self.get_next_rpc_call_id()
+        call_id = self.__get_next_rpc_call_id()
         payload = {
             "type": "rpcCall",
             "endpoint": endpoint,

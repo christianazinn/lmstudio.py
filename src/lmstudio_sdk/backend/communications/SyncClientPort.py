@@ -116,7 +116,7 @@ class ClientPort(BaseClientPort):
     def _rpc_complete_event(self):
         return threading.Event()
 
-    def promise_event(self):
+    def _promise_event(self):
         return PseudoFuture()
 
     # TODO type hint for return type

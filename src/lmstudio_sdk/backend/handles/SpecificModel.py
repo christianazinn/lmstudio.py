@@ -13,7 +13,6 @@ all the methods we want are conveniently inherited. /shrug
 """
 
 
-# TODO rework inheritance structure
 class SpecificModel(DynamicHandle):
     identifier: str
     specifier: str

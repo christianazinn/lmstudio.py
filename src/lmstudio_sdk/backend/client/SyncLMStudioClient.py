@@ -58,7 +58,7 @@ class SyncLMStudioClient(LMStudioClient):
             self.base_url = self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
-        self.create_ports(False)
+        self._create_ports(False)
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         try:
             self.llm.connect()

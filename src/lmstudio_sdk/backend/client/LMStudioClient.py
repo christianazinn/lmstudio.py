@@ -74,7 +74,7 @@ class LMStudioClient(ABC):
     def close(self):
         pass
 
-    def create_ports(self, is_async: bool):
+    def _create_ports(self, is_async: bool):
         error_msg = None
         if self.base_url is None:
             error_msg = "Failed to create ports: base_url is None"
