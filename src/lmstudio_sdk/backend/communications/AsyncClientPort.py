@@ -1,6 +1,7 @@
 import asyncio
 import json
 import websockets
+from typing import Any, Callable
 
 from .BaseClientPort import BaseClientPort
 from ...utils import get_logger, pretty_print, pretty_print_error, RPCError
@@ -77,7 +78,6 @@ class AsyncClientPort(BaseClientPort):
                         del self.channel_handlers[channel_id]
 
                 # RPC endpoints
-                # TODO: error handling
                 elif data_type == "rpcResult" or data_type == "rpcError":
                     call_id = data.get("callId", -1)
                     if call_id in self.rpc_handlers:
@@ -94,12 +94,16 @@ class AsyncClientPort(BaseClientPort):
         finally:
             self.running = False
 
-    async def _send_payload(self, payload: dict, extra: dict | None = None):
+    async def _send_payload(
+        self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None
+    ):
         if not self._websocket:
             logger.error("Attempted to send payload, but WebSocket connection is not established.")
             raise ValueError("WebSocket connection not established.")
         logger.send(f"Sending payload on async port {self.endpoint}:\n{pretty_print(payload)}")
         await self._websocket.send(json.dumps(payload))
+        if callback:
+            return callback(extra)
         return extra
 
     def _rpc_complete_event(self):
@@ -108,7 +112,15 @@ class AsyncClientPort(BaseClientPort):
     def promise_event(self):
         return asyncio.Future()
 
-    async def _call_rpc(self, payload: dict, complete: asyncio.Event, result: dict, extra: dict | None = None):
+    # TODO type hint for return type
+    async def _call_rpc(
+        self,
+        payload: dict,
+        complete: asyncio.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None = None,
+    ):
         await self._send_payload(payload)
         logger.debug(
             f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
@@ -124,7 +136,13 @@ class AsyncClientPort(BaseClientPort):
             result.update({"extra": extra})
         else:
             result = {"result": result, "extra": extra}
-        return result
+
+        def process_result(x):
+            if isinstance(x, dict):
+                return x.get("result", x)
+            return x
+
+        return process_result(callback(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

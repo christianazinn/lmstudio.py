@@ -1,27 +1,21 @@
 from __future__ import annotations
-from typing import Any, Callable, Generic, Iterator, List, Optional, TypeVar
+from typing import Any, Callable, Iterator, List, Optional
 from queue import Queue
 from threading import Event
-from abc import ABC, abstractmethod
-from ...dataclasses import KVConfig, LLMPredictionStats, ModelDescriptor, PredictionResult
+from abc import ABC
 
-TFragment = TypeVar("TFragment")
-TFinal = TypeVar("TFinal")
+from ...dataclasses import KVConfig, LLMPredictionStats, ModelDescriptor, PredictionResult
+from .BaseOngoingPrediction import BaseOngoingPrediction, BaseStreamableIterator, TFinal, TFragment
 
 
 # TODO polish
-class StreamableIterator(Generic[TFragment, TFinal], ABC):
+class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
     def __init__(self):
+        super().__init__()
         self.queue: Queue[Optional[TFragment]] = Queue()
         self.final_result: Optional[TFinal] = None
         self.error: Optional[Any] = None
-        self.status: str = "pending"
-        self.buffer: List[TFragment] = []
         self.finished_event = Event()
-
-    @abstractmethod
-    def collect(self, fragments: List[TFragment]) -> TFinal:
-        pass
 
     def push(self, fragment: TFragment) -> None:
         if self.status != "pending":
@@ -59,16 +53,8 @@ class StreamableIterator(Generic[TFragment, TFinal], ABC):
                 break
             yield item
 
-    def result(self) -> TFinal:
-        self.finished_event.wait()
-        if self.status == "rejected":
-            raise self.error
-        if self.final_result is None:
-            raise ValueError("Result is not available")
-        return self.final_result
 
-
-class OngoingPrediction(StreamableIterator[str, PredictionResult]):
+class OngoingPrediction(StreamableIterator[str, PredictionResult], BaseOngoingPrediction[str, PredictionResult]):
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel
@@ -119,6 +105,14 @@ class OngoingPrediction(StreamableIterator[str, PredictionResult]):
             ongoing_prediction.push(fragment)
 
         return ongoing_prediction, finished, failed, push
+
+    def result(self) -> TFinal:
+        self.finished_event.wait()
+        if self.status == "rejected":
+            raise self.error
+        if self.final_result is None:
+            raise ValueError("Result is not available")
+        return self.final_result
 
     def cancel(self) -> None:
         """

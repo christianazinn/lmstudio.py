@@ -2,7 +2,7 @@ import threading
 import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict
-from ...utils import get_logger, PseudoFuture, sync_async_decorator
+from ...utils import get_logger, PseudoFuture
 
 
 logger = get_logger(__name__)
@@ -33,11 +33,18 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: dict | None):
+    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
         pass
 
     @abstractmethod
-    def _call_rpc(self, payload: dict, complete: threading.Event | asyncio.Event, extra: dict | None):
+    def _call_rpc(
+        self,
+        payload: dict,
+        complete: threading.Event | asyncio.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None,
+    ):
         pass
 
     @abstractmethod
@@ -67,9 +74,13 @@ class BaseClientPort(ABC):
 
     # TODO endpoint enum
     # TODO: this is an absolutely atrocious design pattern with extra, figure it out
-    @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def create_channel(
-        self, endpoint: str, creation_parameter: Any | None, handler: Callable, extra: dict | None = None
+        self,
+        endpoint: str,
+        creation_parameter: Any | None,
+        handler: Callable,
+        callback: Callable,
+        extra: dict | None = None,
     ) -> int:
         assert self._websocket is not None
         channel_id = self.get_next_channel_id()
@@ -86,9 +97,8 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return {"payload": payload, "extra": {"channelId": channel_id, "extra": extra}}
+        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, callback=callback)
 
-    @sync_async_decorator(obj_method="_send_payload", process_result=lambda x: x)
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
         payload = {
@@ -98,12 +108,14 @@ class BaseClientPort(ABC):
         }
         logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
 
-        return {"payload": payload}
+        # TODO: callback handling in channel method?
+        return self._send_payload(payload)
 
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
-    @sync_async_decorator(obj_method="_call_rpc", process_result=lambda x: x.get("result", x))
-    def call_rpc(self, endpoint: str, parameter: Any | None, extra: dict | None = None):
+    def call_rpc(
+        self, endpoint: str, parameter: Any | None, callback: Callable[[dict], Any], extra: dict | None = None
+    ):
         assert self._websocket is not None
         result = {}
 
@@ -130,9 +142,4 @@ class BaseClientPort(ABC):
             f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
         )
 
-        return {
-            "payload": payload,
-            "complete": complete,
-            "result": result,
-            "extra": extra,
-        }
+        return self._call_rpc(payload, complete, result, callback, extra)

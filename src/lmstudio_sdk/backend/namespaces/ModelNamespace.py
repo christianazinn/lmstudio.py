@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from functools import partial
 from time import time
-from typing import Generic, List, TypeVar, Union
+from typing import Any, Coroutine, Generic, List, TypeVar, Union
 
 from ...dataclasses import (
     BaseLoadModelOpts,
@@ -21,9 +20,15 @@ from ...utils import (
     number_to_checkbox_numeric,
     pretty_print,
     pretty_print_error,
-    sync_async_decorator,
 )
-from ..handles import EmbeddingDynamicHandle, EmbeddingSpecificModel, DynamicHandle, LLMDynamicHandle, LLMSpecificModel
+from ..handles import (
+    EmbeddingDynamicHandle,
+    EmbeddingSpecificModel,
+    DynamicHandle,
+    LLMDynamicHandle,
+    LLMSpecificModel,
+    SpecificModel,
+)
 from ..communications import BaseClientPort
 
 
@@ -33,14 +38,16 @@ logger = get_logger(__name__)
 TClientPort = TypeVar("TClientPort", bound="BaseClientPort")
 TLoadModelConfig = TypeVar("TLoadModelConfig")
 TDynamicHandle = TypeVar("TDynamicHandle", bound="DynamicHandle")
-TSpecificModel = TypeVar("TSpecificModel")
+TSpecificModel = TypeVar("TSpecificModel", bound="SpecificModel")
 
 
 def load_process_result(extra):
-    channel_id = extra.get("channel_id")
+    logger.debug(extra)
+    channel_id = extra.get("channelId")
     extra = extra.get("extra")
     if "signal" in extra:
-        extra.get("signal").add_listener(partial(extra.get("cancel_send"), channel_id))
+        extra.get("signal").add_listener(lambda: extra.get("cancel_send")(channel_id))
+        logger.debug(f"Added cancel listener for channel {channel_id}.")
     if extra.get("is_async"):
         return extra.get("promise")
     # handling PseudoFuture
@@ -139,14 +146,13 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             self._port, {"type": "instanceReference", "instanceReference": instance_reference}
         )
 
-    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self) -> None:
-        return {}
+        return self._port.connect()
 
-    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self) -> None:
-        return {}
+        return self._port.close()
 
+    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
         optional object with additional options. By default, the model is loaded with the default
@@ -188,8 +194,6 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-    @sync_async_decorator(obj_method="create_channel", process_result=load_process_result)
-    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
         promise = self._port.promise_event()
         full_path: str = path
         start_time: float = 0
@@ -230,12 +234,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
                 reject(ChannelError(message.get("error").get("title")))
 
-        @sync_async_decorator(obj_method=(self._port, "send_channel_message"), process_result=lambda x: None)
         def cancel_send(channel_id):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             # we choose not to reject with an Exception because the user should not have to handle it
             resolve(None)
-            return {"channel_id": channel_id, "message": {"type": "cancel"}}
+            return self._port.send_channel_message(channel_id, {"type": "cancel"})
 
         extra = {"is_async": self._port.is_async(), "promise": promise}
         if opts and "signal" in opts:
@@ -243,11 +246,10 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             if signal is not None:
                 extra.update({"signal": signal, "cancel_send": cancel_send})
 
-        return {
-            "endpoint": "loadModel",
-            "creation_parameter": {
+        return self._port.create_channel(
+            "loadModel",
+            {
                 "path": path,
-                "identifier": opts["identifier"] if opts and "identifier" in opts else path,
                 "loadConfigStack": {
                     "layers": [
                         {
@@ -259,11 +261,11 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                     ]
                 },
             },
-            "handler": handle_message,
-            "extra": extra,
-        }
+            handle_message,
+            lambda x: load_process_result(x),
+            extra=extra,
+        )
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def unload(self, identifier: str) -> None:
         """
         Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
@@ -274,21 +276,15 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
         if not isinstance(identifier, str):
             logger.error(f"unload: identifier must be a string, got {type(identifier)}")
             raise ValueError("Identifier must be a string.")
-        return {"endpoint": "unloadModel", "parameter": {"identifier": identifier}}
+        return self._port.call_rpc("unloadModel", {"identifier": identifier}, lambda x: x)
 
-    @sync_async_decorator(obj_method="call_rpc", process_result=lambda x: x)
     def list_loaded(self) -> List[ModelDescriptor]:
         """
         List all the currently loaded models.
         """
-        return {"endpoint": "listLoaded", "parameter": None}
+        return self._port.call_rpc("listLoaded", None, lambda x: x)
 
-    # TODO: somehow you need to get self in there
-    @sync_async_decorator(
-        obj_method="call_rpc",
-        process_result=lambda x: x.get("extra").get("process_result")(x),
-    )
-    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel:
+    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel | Coroutine[Any, Any, TSpecificModel]:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -331,17 +327,15 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
                 raise Exception("Model not found")
             return self.create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
 
-        return {
-            "endpoint": "getModelInfo",
-            "parameter": {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
-            "extra": {
-                "process_result": lambda x: process_get_result(x),
-            },
-        }
+        return self._port.call_rpc(
+            "getModelInfo",
+            {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
+            lambda x: x.get("extra").get("process_result")(x),
+            extra={"process_result": process_get_result},
+        )
 
-    @sync_async_decorator(obj_method="get", process_result=lambda x: x)
     def unstable_get_any(self) -> TSpecificModel:
-        return {"query": {}}
+        return self.get({})
 
     # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(

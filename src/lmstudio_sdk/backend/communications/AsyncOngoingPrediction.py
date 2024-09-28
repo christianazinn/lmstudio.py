@@ -1,25 +1,18 @@
 from __future__ import annotations
 import asyncio
-from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, Callable, Generic, List, Optional, TypeVar
+from abc import ABC
+from typing import Any, AsyncIterator, Callable, List, Optional
+
 from ...dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
-
-
-TFragment = TypeVar("TFragment")
-TFinal = TypeVar("TFinal")
+from .BaseOngoingPrediction import BaseOngoingPrediction, BaseStreamableIterator, TFinal, TFragment
 
 
 # TODO polish
-class StreamablePromise(Generic[TFragment, TFinal], ABC):
+class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
     def __init__(self):
+        super().__init__()
         self.queue: asyncio.Queue[Optional[TFragment]] = asyncio.Queue()
         self.promise_final: asyncio.Future[TFinal] = asyncio.Future()
-        self.status: str = "pending"
-        self.buffer: List[TFragment] = []
-
-    @abstractmethod
-    async def collect(self, fragments: List[TFragment]) -> TFinal:
-        pass
 
     def push(self, fragment: TFragment) -> None:
         if self.status != "pending":
@@ -68,7 +61,7 @@ class StreamablePromise(Generic[TFragment, TFinal], ABC):
         return item
 
 
-class AsyncOngoingPrediction(StreamablePromise[str, PredictionResult]):
+class AsyncOngoingPrediction(StreamablePromise[str, PredictionResult], BaseOngoingPrediction[str, PredictionResult]):
     """
     Represents an ongoing prediction.
 

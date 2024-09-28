@@ -1,6 +1,8 @@
 import json
 import threading
 import websocket
+from typing import Any, Callable
+
 from .BaseClientPort import BaseClientPort
 from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
 
@@ -40,8 +42,6 @@ class ClientPort(BaseClientPort):
                 del self.channel_handlers[channel_id]
 
         # RPC endpoints
-        # TODO currently we handle errors two semantic levels up whereas it should be one
-        # implement error handling with the same semantics as channels
         elif data_type == "rpcResult" or data_type == "rpcError":
             call_id = data.get("callId", -1)
             # TODO we should pass only the error dict
@@ -91,7 +91,7 @@ class ClientPort(BaseClientPort):
         logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
-    def _send_payload(self, payload: dict, extra: dict | None = None):
+    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
@@ -99,6 +99,8 @@ class ClientPort(BaseClientPort):
             else:
                 logger.error("Attempted to send payload, but WebSocket connection is not established.")
                 raise ValueError("WebSocket connection is not established.")
+            if callback:
+                return callback(extra)
             return extra
 
     def close(self) -> None:
@@ -118,7 +120,14 @@ class ClientPort(BaseClientPort):
         return PseudoFuture()
 
     # TODO type hint for return type
-    def _call_rpc(self, payload: dict, complete: threading.Event, result: dict, extra: dict | None = None):
+    def _call_rpc(
+        self,
+        payload: dict,
+        complete: threading.Event,
+        result: dict,
+        callback: Callable[[dict], Any],
+        extra: dict | None = None,
+    ):
         assert self._websocket is not None
         self._send_payload(payload)
         logger.debug(
@@ -135,7 +144,13 @@ class ClientPort(BaseClientPort):
             result.update({"extra": extra})
         else:
             result = {"result": result, "extra": extra}
-        return result
+
+        def process_result(x):
+            if isinstance(x, dict):
+                return x.get("result", x)
+            return x
+
+        return process_result(callback(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

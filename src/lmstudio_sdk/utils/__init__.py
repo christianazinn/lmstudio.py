@@ -2,11 +2,11 @@ from .AbortSignal import AbortSignal
 from .BufferedEvent import BufferedEvent
 from .logger import get_logger, RECV, SEND, WRAPPER, WEBSOCKET
 from .PseudoFuture import PseudoFuture
-from .sync_async_decorator import sync_async_decorator
 from .utils import (
     ChannelError,
-    lms_default_ports,
     generate_random_base64,
+    lms_default_ports,
+    LiteralOrCoroutine,
     number_to_checkbox_numeric,
     pretty_print,
     pretty_print_error,
@@ -20,6 +20,7 @@ __all__ = [
     "generate_random_base64",
     "get_logger",
     "lms_default_ports",
+    "LiteralOrCoroutine",
     "number_to_checkbox_numeric",
     "pretty_print",
     "pretty_print_error",
@@ -27,7 +28,6 @@ __all__ = [
     "RECV",
     "RPCError",
     "SEND",
-    "sync_async_decorator",
     "WRAPPER",
     "WEBSOCKET",
 ]

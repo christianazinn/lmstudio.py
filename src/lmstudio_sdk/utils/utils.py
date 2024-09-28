@@ -1,7 +1,7 @@
 import json
 from base64 import b64encode
 from secrets import token_bytes
-from typing import Dict, Optional, Union
+from typing import Any, Coroutine, Dict, Optional, TypeVar, Union
 
 
 lms_default_ports = [1234]
@@ -46,3 +46,7 @@ class RPCError(Exception):
 
 class ChannelError(Exception):
     pass
+
+
+T = TypeVar("T")
+LiteralOrCoroutine = Union[T, Coroutine[Any, Any, T]]

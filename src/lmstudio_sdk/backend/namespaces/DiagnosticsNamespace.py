@@ -1,7 +1,5 @@
 from typing import Callable, Literal, TypedDict
 
-from ...utils import sync_async_decorator
-
 
 class DiagnosticsLogEventData(TypedDict):
     type: Literal["llm.prediction.input"]
@@ -19,13 +17,11 @@ class DiagnosticsNamespace:
     def __init__(self, port):
         self._port = port
 
-    @sync_async_decorator(obj_method="connect", process_result=lambda x: None)
     def connect(self):
-        pass
+        return self._port.connect()
 
-    @sync_async_decorator(obj_method="close", process_result=lambda x: None)
     def close(self):
-        pass
+        return self._port.close()
 
     # TODO make me work
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
