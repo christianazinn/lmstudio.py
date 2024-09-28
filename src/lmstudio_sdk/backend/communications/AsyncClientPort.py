@@ -66,7 +66,10 @@ class AsyncClientPort(BaseClientPort):
                 if data_type == "channelSend":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        self.channel_handlers[channel_id](data.get("message", data))
+                        message_content = data.get("message", data)
+                        if message_content.get("type", None) == "log":
+                            message_content = message_content.get("log")
+                        self.channel_handlers[channel_id](message_content)
                 elif data_type == "channelClose":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:

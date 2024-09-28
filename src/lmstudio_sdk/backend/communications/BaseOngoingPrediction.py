@@ -31,10 +31,6 @@ class BaseStreamableIterator(Generic[TFragment, TFinal], ABC):
 
 class BaseOngoingPrediction(BaseStreamableIterator[TFragment, TFinal], ABC):
     @abstractmethod
-    def __init__(self, on_cancel: Callable[[], None]):
-        pass
-
-    @abstractmethod
     def create(on_cancel: Callable[[], None]) -> TFinal:
         pass
 

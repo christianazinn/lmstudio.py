@@ -97,7 +97,7 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, postprocess=postprocess)
+        return self._send_payload(payload, extra={"channelId": channel_id, "extra": extra}, postprocess=postprocess)
 
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
@@ -111,7 +111,6 @@ class BaseClientPort(ABC):
         return self._send_payload(payload)
 
     # TODO type hint for return type
-    # we implement this manually instead of using the decorator because of the different waiting models
     def call_rpc(
         self, endpoint: str, parameter: Any | None, postprocess: Callable[[dict], Any], extra: dict | None = None
     ):
@@ -119,7 +118,6 @@ class BaseClientPort(ABC):
         result = {}
 
         # dependency injecting a complete event
-        # TODO: type hinting, abstract method
         complete = self._rpc_complete_event()
 
         def rpc_handler(data):

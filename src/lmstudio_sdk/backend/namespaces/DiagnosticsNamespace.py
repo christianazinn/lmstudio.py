@@ -17,7 +17,6 @@ class DiagnosticsLogEvent(TypedDict):
 
 
 class DiagnosticsNamespace(BaseNamespace[BaseClientPort]):
-    # TODO make me work
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
         """
         Register a callback to receive log events. Return a function to stop receiving log events.
@@ -26,9 +25,14 @@ class DiagnosticsNamespace(BaseNamespace[BaseClientPort]):
         :alpha:
         """
 
-        # TODO implement
-        def unsubscribe() -> None:
-            # Logic to stop receiving log events
-            pass
+        def unsubscribe(channel_id: int) -> None:
+            del self._port.channel_handlers[channel_id]
+            return self._port.send_channel_message(channel_id, {"type": "channelClose"})
 
-        return unsubscribe
+        return self._port.create_channel(
+            "streamLogs",
+            None,
+            listener,
+            lambda x: (lambda: x.get("extra").get("unsubscribe")(x.get("channel_id"))),
+            extra={"unsubscribe": unsubscribe},
+        )
