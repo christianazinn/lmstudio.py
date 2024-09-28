@@ -1,6 +1,7 @@
 from typing import List
 
 from ...dataclasses import DownloadedModel
+from ...utils import LiteralOrCoroutine
 from ..communications import BaseClientPort
 
 
@@ -16,7 +17,7 @@ class SystemNamespace:
     def close(self) -> None:
         return self._port.close()
 
-    def list_downloaded_models(self) -> List[DownloadedModel]:
+    def list_downloaded_models(self) -> LiteralOrCoroutine[List[DownloadedModel]]:
         """
         List all the models that have been downloaded.
         """

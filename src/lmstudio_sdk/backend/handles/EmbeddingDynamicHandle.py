@@ -1,7 +1,7 @@
 from typing import List
 
 from ...dataclasses import find_key_in_kv_config
-from ...utils import get_logger
+from ...utils import get_logger, LiteralOrCoroutine
 from .DynamicHandle import DynamicHandle
 
 
@@ -21,7 +21,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
     :public:
     """
 
-    def embed_string(self, input_string: str) -> dict[str, List[float]]:
+    def embed_string(self, input_string: str) -> LiteralOrCoroutine[dict[str, List[float]]]:
         """
         Embed a string into a vector representation.
 
@@ -35,7 +35,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
             "embedString", {"specifier": self._specifier, "inputString": input_string}, lambda x: x
         )
 
-    def unstable_get_context_length(self) -> int:
+    def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
         """
         Get the context length of the model.
 
@@ -47,7 +47,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
             lambda x: find_key_in_kv_config(x, "embedding.load.contextLength") or -1,
         )
 
-    def unstable_get_eval_batch_size(self) -> int:
+    def unstable_get_eval_batch_size(self) -> LiteralOrCoroutine[int]:
         """
         Get the evaluation batch size of the model.
 
@@ -55,7 +55,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
         """
         return self.get_load_config(lambda x: find_key_in_kv_config(x, "embedding.load.llama.evalBatchSize") or -1)
 
-    def unstable_tokenize(self, input_string: str) -> List[int]:
+    def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
         """
         Tokenize the input string.
 

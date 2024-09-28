@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from time import time
-from typing import Any, Coroutine, Generic, List, TypeVar, Union
+from typing import Generic, List, TypeVar, Union
 
 from ...dataclasses import (
     BaseLoadModelOpts,
@@ -17,6 +17,7 @@ from ...dataclasses import (
 from ...utils import (
     ChannelError,
     get_logger,
+    LiteralOrCoroutine,
     number_to_checkbox_numeric,
     pretty_print,
     pretty_print_error,
@@ -152,7 +153,9 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
     def close(self) -> None:
         return self._port.close()
 
-    def load(self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None) -> TSpecificModel:
+    def load(
+        self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
+    ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
         optional object with additional options. By default, the model is loaded with the default
@@ -278,13 +281,13 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             raise ValueError("Identifier must be a string.")
         return self._port.call_rpc("unloadModel", {"identifier": identifier}, lambda x: x)
 
-    def list_loaded(self) -> List[ModelDescriptor]:
+    def list_loaded(self) -> LiteralOrCoroutine[List[ModelDescriptor]]:
         """
         List all the currently loaded models.
         """
         return self._port.call_rpc("listLoaded", None, lambda x: x)
 
-    def get(self, query: Union[ModelQuery, str]) -> TSpecificModel | Coroutine[Any, Any, TSpecificModel]:
+    def get(self, query: Union[ModelQuery, str]) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -334,13 +337,13 @@ class ModelNamespace(Generic[TClientPort, TLoadModelConfig, TDynamicHandle, TSpe
             extra={"process_result": process_get_result},
         )
 
-    def unstable_get_any(self) -> TSpecificModel:
+    def unstable_get_any(self) -> LiteralOrCoroutine[TSpecificModel]:
         return self.get({})
 
     # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(
         self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
-    ) -> TSpecificModel:
+    ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.

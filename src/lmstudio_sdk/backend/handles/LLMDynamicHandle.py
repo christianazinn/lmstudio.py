@@ -134,7 +134,7 @@ class LLMDynamicHandle(DynamicHandle):
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
-        callback: Callable[[dict], Any],
+        postprocess: Callable[[dict], Any],
         extra: dict | None = None,
     ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         finished = self._port._rpc_complete_event()
@@ -190,7 +190,7 @@ class LLMDynamicHandle(DynamicHandle):
                 "predictionConfigStack": prediction_config_stack,
             },
             handle_fragments,
-            lambda x: callback(predict_internal_process_result(x)),
+            lambda x: postprocess(predict_internal_process_result(x)),
             extra,
         )
 
@@ -376,7 +376,7 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
-        return self.get_load_config(callback=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
+        return self.get_load_config(postprocess=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
 
     def unstable_apply_prompt_template(
         self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None

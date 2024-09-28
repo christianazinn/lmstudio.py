@@ -91,7 +91,7 @@ class ClientPort(BaseClientPort):
         logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
-    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
+    def _send_payload(self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
@@ -99,8 +99,8 @@ class ClientPort(BaseClientPort):
             else:
                 logger.error("Attempted to send payload, but WebSocket connection is not established.")
                 raise ValueError("WebSocket connection is not established.")
-            if callback:
-                return callback(extra)
+            if postprocess:
+                return postprocess(extra)
             return extra
 
     def close(self) -> None:
@@ -125,7 +125,7 @@ class ClientPort(BaseClientPort):
         payload: dict,
         complete: threading.Event,
         result: dict,
-        callback: Callable[[dict], Any],
+        postprocess: Callable[[dict], Any],
         extra: dict | None = None,
     ):
         assert self._websocket is not None
@@ -150,7 +150,7 @@ class ClientPort(BaseClientPort):
                 return x.get("result", x)
             return x
 
-        return process_result(callback(result))
+        return process_result(postprocess(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

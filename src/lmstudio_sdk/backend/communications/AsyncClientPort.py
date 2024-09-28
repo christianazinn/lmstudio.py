@@ -95,15 +95,15 @@ class AsyncClientPort(BaseClientPort):
             self.running = False
 
     async def _send_payload(
-        self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None
+        self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None
     ):
         if not self._websocket:
             logger.error("Attempted to send payload, but WebSocket connection is not established.")
             raise ValueError("WebSocket connection not established.")
         logger.send(f"Sending payload on async port {self.endpoint}:\n{pretty_print(payload)}")
         await self._websocket.send(json.dumps(payload))
-        if callback:
-            return callback(extra)
+        if postprocess:
+            return postprocess(extra)
         return extra
 
     def _rpc_complete_event(self):
@@ -118,7 +118,7 @@ class AsyncClientPort(BaseClientPort):
         payload: dict,
         complete: asyncio.Event,
         result: dict,
-        callback: Callable[[dict], Any],
+        postprocess: Callable[[dict], Any],
         extra: dict | None = None,
     ):
         await self._send_payload(payload)
@@ -142,7 +142,7 @@ class AsyncClientPort(BaseClientPort):
                 return x.get("result", x)
             return x
 
-        return process_result(callback(result))
+        return process_result(postprocess(result))
 
 
 # TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

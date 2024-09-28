@@ -33,7 +33,7 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
+    def _send_payload(self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None):
         pass
 
     @abstractmethod
@@ -42,7 +42,7 @@ class BaseClientPort(ABC):
         payload: dict,
         complete: threading.Event | asyncio.Event,
         result: dict,
-        callback: Callable[[dict], Any],
+        postprocess: Callable[[dict], Any],
         extra: dict | None,
     ):
         pass
@@ -79,7 +79,7 @@ class BaseClientPort(ABC):
         endpoint: str,
         creation_parameter: Any | None,
         handler: Callable,
-        callback: Callable,
+        postprocess: Callable[[dict], Any],
         extra: dict | None = None,
     ) -> int:
         assert self._websocket is not None
@@ -97,7 +97,7 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, callback=callback)
+        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, postprocess=postprocess)
 
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
@@ -108,13 +108,12 @@ class BaseClientPort(ABC):
         }
         logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
 
-        # TODO: callback handling in channel method?
         return self._send_payload(payload)
 
     # TODO type hint for return type
     # we implement this manually instead of using the decorator because of the different waiting models
     def call_rpc(
-        self, endpoint: str, parameter: Any | None, callback: Callable[[dict], Any], extra: dict | None = None
+        self, endpoint: str, parameter: Any | None, postprocess: Callable[[dict], Any], extra: dict | None = None
     ):
         assert self._websocket is not None
         result = {}
@@ -142,4 +141,4 @@ class BaseClientPort(ABC):
             f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
         )
 
-        return self._call_rpc(payload, complete, result, callback, extra)
+        return self._call_rpc(payload, complete, result, postprocess, extra)
