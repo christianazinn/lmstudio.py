@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 from urllib.parse import urlparse
 
 from ...utils import generate_random_base64, get_logger
@@ -10,7 +11,7 @@ logger = get_logger(__name__)
 
 class LMStudioClient(ABC):
     client_identifier: str
-    base_url: str | None
+    base_url: Optional[str]
 
     llm: LLMNamespace = None
     embedding: EmbeddingNamespace = None
@@ -109,9 +110,9 @@ class LMStudioClient(ABC):
     # ensure you connect and close properly!
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         self.client_identifier = client_identifier or generate_random_base64(18)
         self.__client_passkey = client_passkey or generate_random_base64(18)

@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -46,9 +47,9 @@ class SyncLMStudioClient(LMStudioClient):
 
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 

@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 from ...dataclasses import (
     convert_dict_to_kv_config,
@@ -60,7 +60,7 @@ class LLMDynamicHandle(DynamicHandle):
 
     _internal_kv_config_stack = KVConfigStack(layers=[])
 
-    def __prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
+    def __prediction_config_to_kv_config(self, prediction_config: Optional[LLMPredictionConfig]) -> KVConfig:
         fields = []
         if prediction_config is not None:
             for default_key in [
@@ -104,7 +104,9 @@ class LLMDynamicHandle(DynamicHandle):
                 fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
         return {"fields": fields}
 
-    def __split_opts(self, opts: LLMPredictionOpts) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+    def __split_opts(self, opts: Optional[LLMPredictionOpts]) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+        if opts is None:
+            return {}, {}
         extra_opts: LLMPredictionExtraOpts = {}
         for key in ["on_prompt_processing_progress", "on_first_token"]:
             if key in opts:
@@ -134,7 +136,7 @@ class LLMDynamicHandle(DynamicHandle):
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
         on_error: Callable[[Exception], None],
         postprocess: Callable[[dict], Any],
-        extra: dict | None = None,
+        extra: Optional[dict] = None,
     ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         finished = self._port._rpc_complete_event()
         is_first_token = True
@@ -194,7 +196,7 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def complete(
-        self, prompt: LLMCompletionContextInput, opts: LLMPredictionOpts
+        self, prompt: LLMCompletionContextInput, opts: Optional[LLMPredictionOpts]
     ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         """
         Use the loaded model to predict text.
@@ -296,7 +298,7 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def respond(
-        self, history: LLMConversationContextInput, opts: LLMPredictionOpts
+        self, history: LLMConversationContextInput, opts: Optional[LLMPredictionOpts] = None
     ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         """
         Use the loaded model to generate a response based on the given history.
@@ -354,7 +356,9 @@ class LLMDynamicHandle(DynamicHandle):
             raise ValueError("History must be a list conforming to LLMConversationContextInput, got something else.")
         return self.predict(resolved_context, opts)
 
-    def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> LiteralOrCoroutine[BaseOngoingPrediction]:
+    def predict(
+        self, context: LLMContext, opts: Optional[LLMPredictionOpts] = None
+    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         config, extra_opts = self.__split_opts(opts)
 
         if self._port.is_async():
@@ -392,7 +396,7 @@ class LLMDynamicHandle(DynamicHandle):
         return self.get_load_config(postprocess=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
 
     def unstable_apply_prompt_template(
-        self, context: LLMContext, opts: LLMApplyPromptTemplateOpts | None = None
+        self, context: LLMContext, opts: Optional[LLMApplyPromptTemplateOpts] = None
     ) -> LiteralOrCoroutine[str]:
         return self._port.call_rpc(
             "applyPromptTemplate",

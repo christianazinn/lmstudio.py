@@ -1,7 +1,8 @@
 import asyncio
 import json
-from urllib.error import URLError
 from http.client import HTTPConnection
+from typing import Optional
+from urllib.error import URLError
 
 from ...utils import lms_default_ports, get_logger
 from .LMStudioClient import LMStudioClient
@@ -54,9 +55,9 @@ class AsyncLMStudioClient(LMStudioClient):
 
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 

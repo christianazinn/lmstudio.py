@@ -1,7 +1,7 @@
 import json
 import threading
 import websocket
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .BaseClientPort import BaseClientPort
 from ....utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
@@ -90,7 +90,9 @@ class SyncClientPort(BaseClientPort):
         logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
-    def _send_payload(self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None):
+    def _send_payload(
+        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
+    ):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
@@ -124,7 +126,7 @@ class SyncClientPort(BaseClientPort):
         complete: threading.Event,
         result: dict,
         postprocess: Callable[[dict], Any],
-        extra: dict | None = None,
+        extra: Optional[dict] = None,
     ):
         assert self._websocket is not None
         self._send_payload(payload)

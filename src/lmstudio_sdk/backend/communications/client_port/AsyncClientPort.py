@@ -1,7 +1,7 @@
 import asyncio
 import json
 import websockets
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .BaseClientPort import BaseClientPort
 from ....utils import get_logger, pretty_print, pretty_print_error, RPCError
@@ -96,7 +96,7 @@ class AsyncClientPort(BaseClientPort):
             self.running = False
 
     async def _send_payload(
-        self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None
+        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
     ):
         if not self._websocket:
             logger.error("Attempted to send payload, but WebSocket connection is not established.")
@@ -119,7 +119,7 @@ class AsyncClientPort(BaseClientPort):
         complete: asyncio.Event,
         result: dict,
         postprocess: Callable[[dict], Any],
-        extra: dict | None = None,
+        extra: Optional[dict] = None,
     ):
         await self._send_payload(payload)
         logger.debug(

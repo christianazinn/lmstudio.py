@@ -1,7 +1,7 @@
 import threading
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 from ....utils import get_logger, PseudoFuture
 
 
@@ -33,7 +33,7 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: dict | None = None, postprocess: Callable[[dict], Any] | None = None):
+    def _send_payload(self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None):
         pass
 
     @abstractmethod
@@ -43,7 +43,7 @@ class BaseClientPort(ABC):
         complete: threading.Event | asyncio.Event,
         result: dict,
         postprocess: Callable[[dict], Any],
-        extra: dict | None,
+        extra: Optional[dict],
     ):
         pass
 
@@ -75,10 +75,10 @@ class BaseClientPort(ABC):
     def create_channel(
         self,
         endpoint: str,
-        creation_parameter: Any | None,
+        creation_parameter: Optional[dict],
         handler: Callable,
         postprocess: Callable[[dict], Any],
-        extra: dict | None = None,
+        extra: Optional[dict] = None,
     ) -> int:
         assert self._websocket is not None
         channel_id = self.__get_next_channel_id()
@@ -109,7 +109,7 @@ class BaseClientPort(ABC):
         return self._send_payload(payload)
 
     def call_rpc(
-        self, endpoint: str, parameter: Any | None, postprocess: Callable[[dict], Any], extra: dict | None = None
+        self, endpoint: str, parameter: Any, postprocess: Callable[[dict], Any], extra: Optional[dict] = None
     ):
         assert self._websocket is not None
         result = {}

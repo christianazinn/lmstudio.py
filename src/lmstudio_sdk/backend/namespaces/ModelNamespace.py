@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from time import time
-from typing import Generic, List, TypeVar, Union
+from typing import Generic, List, Optional, TypeVar, Union
 
 from ...dataclasses import (
     BaseLoadModelOpts,
@@ -146,7 +146,7 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         )
 
     def load(
-        self, path: str, opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
+        self, path: str, opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None
     ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
@@ -335,7 +335,7 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
     # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(
-        self, identifier: str, path: str, load_opts: BaseLoadModelOpts[TLoadModelConfig] | None = None
+        self, identifier: str, path: str, load_opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None
     ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
