@@ -4,8 +4,18 @@ from queue import Queue
 from threading import Event
 from abc import ABC
 
-from ....dataclasses import KVConfig, LLMPredictionStats, ModelDescriptor, PredictionResult
-from .BaseOngoingPrediction import BaseOngoingPrediction, BaseStreamableIterator, TFinal, TFragment
+from ....dataclasses import (
+    KVConfig,
+    LLMPredictionStats,
+    ModelDescriptor,
+    PredictionResult,
+)
+from .BaseOngoingPrediction import (
+    BaseOngoingPrediction,
+    BaseStreamableIterator,
+    TFinal,
+    TFragment,
+)
 
 
 # TODO polish
@@ -54,7 +64,10 @@ class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
             yield item
 
 
-class SyncOngoingPrediction(StreamableIterator[str, PredictionResult], BaseOngoingPrediction[str, PredictionResult]):
+class SyncOngoingPrediction(
+    StreamableIterator[str, PredictionResult],
+    BaseOngoingPrediction[str, PredictionResult],
+):
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel
@@ -83,7 +96,12 @@ class SyncOngoingPrediction(StreamableIterator[str, PredictionResult], BaseOngoi
     @staticmethod
     def create(
         on_cancel: Callable[[], None],
-    ) -> tuple[SyncOngoingPrediction, Callable[..., None], Callable[..., None], Callable[[str], None]]:
+    ) -> tuple[
+        SyncOngoingPrediction,
+        Callable[..., None],
+        Callable[..., None],
+        Callable[[str], None],
+    ]:
         ongoing_prediction = SyncOngoingPrediction(on_cancel)
 
         def finished(

@@ -3,7 +3,12 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from ...utils import generate_random_base64, get_logger
-from ..namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, SystemNamespace
+from ..namespaces import (
+    DiagnosticsNamespace,
+    EmbeddingNamespace,
+    LLMNamespace,
+    SystemNamespace,
+)
 
 
 logger = get_logger(__name__)
@@ -96,10 +101,27 @@ class LMStudioClient(ABC):
             f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
         )
 
-        llm_port = ClientPort(self.base_url, "llm", self.client_identifier, self.__client_passkey)
-        embedding_port = ClientPort(self.base_url, "embedding", self.client_identifier, self.__client_passkey)
-        system_port = ClientPort(self.base_url, "system", self.client_identifier, self.__client_passkey)
-        diagnostics_port = ClientPort(self.base_url, "diagnostics", self.client_identifier, self.__client_passkey)
+        llm_port = ClientPort(
+            self.base_url, "llm", self.client_identifier, self.__client_passkey
+        )
+        embedding_port = ClientPort(
+            self.base_url,
+            "embedding",
+            self.client_identifier,
+            self.__client_passkey,
+        )
+        system_port = ClientPort(
+            self.base_url,
+            "system",
+            self.client_identifier,
+            self.__client_passkey,
+        )
+        diagnostics_port = ClientPort(
+            self.base_url,
+            "diagnostics",
+            self.client_identifier,
+            self.__client_passkey,
+        )
 
         self.llm = LLMNamespace(llm_port)
         self.embedding = EmbeddingNamespace(embedding_port)

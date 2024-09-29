@@ -2,7 +2,9 @@ from typing import Callable, List, Literal, NotRequired, TypedDict
 from .LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
 
 
-LLMContextOverflowPolicy = Literal["stopAtLimit", "truncateMiddle", "rollingWindow"]
+LLMContextOverflowPolicy = Literal[
+    "stopAtLimit", "truncateMiddle", "rollingWindow"
+]
 """
 Behavior for when the generated tokens length exceeds the context window size. Only the following values are allowed:
 

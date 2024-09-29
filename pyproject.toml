@@ -1,5 +1,5 @@
 [tool.flake8]
-max-line-length = 120
+max-line-length = 80
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
@@ -33,7 +33,7 @@ exclude = [
 ]
 
 # Same as Black.
-line-length = 120
+line-length = 80
 indent-width = 4
 
 # Assume Python 3.8

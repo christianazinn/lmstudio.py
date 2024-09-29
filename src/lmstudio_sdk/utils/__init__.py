@@ -1,6 +1,10 @@
 from .AbortSignal import AsyncAbortSignal, BaseAbortSignal, SyncAbortSignal
-from .BufferedEvent import AsyncBufferedEvent, BaseBufferedEvent, SyncBufferedEvent
-from .logger import get_logger, RECV, SEND, WRAPPER, WEBSOCKET
+from .BufferedEvent import (
+    AsyncBufferedEvent,
+    BaseBufferedEvent,
+    SyncBufferedEvent,
+)
+from .logger import get_logger, RECV, SEND, WEBSOCKET
 from .PseudoFuture import PseudoFuture
 from .utils import (
     _assert,
@@ -34,6 +38,5 @@ __all__ = [
     "SEND",
     "SyncAbortSignal",
     "SyncBufferedEvent",
-    "WRAPPER",
     "WEBSOCKET",
 ]

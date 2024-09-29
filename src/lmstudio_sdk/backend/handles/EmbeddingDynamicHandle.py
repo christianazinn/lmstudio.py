@@ -21,7 +21,9 @@ class EmbeddingDynamicHandle(DynamicHandle):
     :public:
     """
 
-    def embed_string(self, input_string: str) -> LiteralOrCoroutine[dict[str, List[float]]]:
+    def embed_string(
+        self, input_string: str
+    ) -> LiteralOrCoroutine[dict[str, List[float]]]:
         """
         Embed a string into a vector representation.
 
@@ -34,7 +36,9 @@ class EmbeddingDynamicHandle(DynamicHandle):
             logger,
         )
         return self._port.call_rpc(
-            "embedString", {"specifier": self._specifier, "inputString": input_string}, lambda x: x
+            "embedString",
+            {"specifier": self._specifier, "inputString": input_string},
+            lambda x: x,
         )
 
     def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
@@ -46,7 +50,8 @@ class EmbeddingDynamicHandle(DynamicHandle):
         return self._port.call_rpc(
             "getLoadConfig",
             {"specifier": self._specifier},
-            lambda x: find_key_in_kv_config(x, "embedding.load.contextLength") or -1,
+            lambda x: find_key_in_kv_config(x, "embedding.load.contextLength")
+            or -1,
         )
 
     def unstable_get_eval_batch_size(self) -> LiteralOrCoroutine[int]:
@@ -55,9 +60,16 @@ class EmbeddingDynamicHandle(DynamicHandle):
 
         :return: The evaluation batch size as an integer.
         """
-        return self.get_load_config(lambda x: find_key_in_kv_config(x, "embedding.load.llama.evalBatchSize") or -1)
+        return self.get_load_config(
+            lambda x: find_key_in_kv_config(
+                x, "embedding.load.llama.evalBatchSize"
+            )
+            or -1
+        )
 
-    def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
+    def unstable_tokenize(
+        self, input_string: str
+    ) -> LiteralOrCoroutine[List[int]]:
         """
         Tokenize the input string.
 
@@ -70,5 +82,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
             logger,
         )
         return self._port.call_rpc(
-            "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
+            "tokenize",
+            {"specifier": self._specifier, "inputString": input_string},
+            lambda x: x.get("tokens", [-1]),
         )

@@ -69,7 +69,6 @@ from .utils import (
     RPCError,
     SEND,
     SyncAbortSignal,
-    WRAPPER,
     WEBSOCKET,
 )
 
@@ -148,5 +147,4 @@ __all__ = [
     "SyncLMStudioClient",
     "SyncOngoingPrediction",
     "WEBSOCKET",
-    "WRAPPER",
 ]

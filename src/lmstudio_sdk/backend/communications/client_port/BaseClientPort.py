@@ -33,7 +33,12 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None):
+    def _send_payload(
+        self,
+        payload: dict,
+        extra: Optional[dict] = None,
+        postprocess: Optional[Callable[[dict], Any]] = None,
+    ):
         pass
 
     @abstractmethod
@@ -95,7 +100,11 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return self._send_payload(payload, extra={"channelId": channel_id, "extra": extra}, postprocess=postprocess)
+        return self._send_payload(
+            payload,
+            extra={"channelId": channel_id, "extra": extra},
+            postprocess=postprocess,
+        )
 
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
@@ -104,12 +113,18 @@ class BaseClientPort(ABC):
             "channelId": channel_id,
             "message": message,
         }
-        logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
+        logger.debug(
+            f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging."
+        )
 
         return self._send_payload(payload)
 
     def call_rpc(
-        self, endpoint: str, parameter: Any, postprocess: Callable[[dict], Any], extra: Optional[dict] = None
+        self,
+        endpoint: str,
+        parameter: Any,
+        postprocess: Callable[[dict], Any],
+        extra: Optional[dict] = None,
     ):
         assert self._websocket is not None
         result = {}

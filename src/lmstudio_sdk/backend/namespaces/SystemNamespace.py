@@ -6,7 +6,9 @@ from .BaseNamespace import BaseNamespace
 
 
 class SystemNamespace(BaseNamespace):
-    def list_downloaded_models(self) -> LiteralOrCoroutine[List[DownloadedModel]]:
+    def list_downloaded_models(
+        self,
+    ) -> LiteralOrCoroutine[List[DownloadedModel]]:
         """
         List all the models that have been downloaded.
         """

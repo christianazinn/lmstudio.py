@@ -15,7 +15,9 @@ class LLMChatHistoryMessageContentPartImage(TypedDict):
     base64: str
 
 
-LLMChatHistoryMessageContentPart = Union[LLMChatHistoryMessageContentPartText, LLMChatHistoryMessageContentPartImage]
+LLMChatHistoryMessageContentPart = Union[
+    LLMChatHistoryMessageContentPartText, LLMChatHistoryMessageContentPartImage
+]
 """
 Represents a part of the content of a message in the history.
 """

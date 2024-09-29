@@ -17,9 +17,20 @@ class SpecificModel(DynamicHandle):
     identifier: str
     specifier: str
 
-    def __init__(self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor):
+    def __init__(
+        self,
+        port: BaseClientPort,
+        instance_reference: str,
+        descriptor: ModelDescriptor,
+    ):
         assert isinstance(instance_reference, str)
-        super().__init__(port, {"type": "instanceReference", "instanceReference": instance_reference})
+        super().__init__(
+            port,
+            {
+                "type": "instanceReference",
+                "instanceReference": instance_reference,
+            },
+        )
         self.identifier = descriptor["identifier"]
         self.path = descriptor["path"]
 

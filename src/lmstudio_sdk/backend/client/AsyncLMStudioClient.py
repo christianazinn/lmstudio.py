@@ -12,7 +12,9 @@ logger = get_logger(__name__)
 
 
 class AsyncLMStudioClient(LMStudioClient):
-    async def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
+    async def _is_localhost_with_given_port_lmstudio_server(
+        self, port: int
+    ) -> int:
         conn = HTTPConnection("127.0.0.1", port)
         try:
             conn.request("GET", "/lmstudio-greeting")
@@ -36,16 +38,23 @@ class AsyncLMStudioClient(LMStudioClient):
         try:
             port = await asyncio.wait_for(
                 asyncio.gather(
-                    *[self._is_localhost_with_given_port_lmstudio_server(port) for port in lms_default_ports],
+                    *[
+                        self._is_localhost_with_given_port_lmstudio_server(port)
+                        for port in lms_default_ports
+                    ],
                     return_exceptions=True,
                 ),
                 timeout=10,  # Adjust timeout as needed
             )
             successful_port = next(p for p in port if isinstance(p, int))
-            logger.info(f"Found LM Studio server on localhost port {successful_port}.")
+            logger.info(
+                f"Found LM Studio server on localhost port {successful_port}."
+            )
             return f"ws://127.0.0.1:{successful_port}"
         except asyncio.TimeoutError:
-            logger.error("Failed to connect to LM Studio on any of the default ports.")
+            logger.error(
+                "Failed to connect to LM Studio on any of the default ports."
+            )
             raise ValueError("""
                 Failed to connect to LM Studio on the default port (1234).
                 Is LM Studio running? If not, you can start it by running `lms server start`.
@@ -72,16 +81,30 @@ class AsyncLMStudioClient(LMStudioClient):
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         try:
             await asyncio.gather(
-                self.llm.connect(), self.embedding.connect(), self.system.connect(), self.diagnostics.connect()
+                self.llm.connect(),
+                self.embedding.connect(),
+                self.system.connect(),
+                self.diagnostics.connect(),
             )
         except ConnectionRefusedError:
-            logger.error(f"Failed to connect to LM Studio server at {self.base_url}.")
-            raise ValueError(f"Failed to connect to LM Studio server at {self.base_url}.")
+            logger.error(
+                f"Failed to connect to LM Studio server at {self.base_url}."
+            )
+            raise ValueError(
+                f"Failed to connect to LM Studio server at {self.base_url}."
+            )
         logger.info("Connected to LM Studio server.")
 
         return self
 
     async def close(self):
-        logger.info(f"Closing connection to LM Studio server at {self.base_url}...")
-        await asyncio.gather(self.llm.close(), self.embedding.close(), self.system.close(), self.diagnostics.close())
+        logger.info(
+            f"Closing connection to LM Studio server at {self.base_url}..."
+        )
+        await asyncio.gather(
+            self.llm.close(),
+            self.embedding.close(),
+            self.system.close(),
+            self.diagnostics.close(),
+        )
         logger.info("Closed connection to LM Studio server.")

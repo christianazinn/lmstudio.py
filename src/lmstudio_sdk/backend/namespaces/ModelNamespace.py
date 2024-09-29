@@ -48,7 +48,9 @@ def load_process_result(extra):
     channel_id = extra.get("channelId")
     extra = extra.get("extra")
     if "signal" in extra:
-        extra.get("signal").add_listener(lambda: extra.get("cancel_send")(channel_id))
+        extra.get("signal").add_listener(
+            lambda: extra.get("cancel_send")(channel_id)
+        )
         logger.debug(f"Added cancel listener for channel {channel_id}.")
     if extra.get("is_async"):
         return extra.get("promise")
@@ -56,7 +58,11 @@ def load_process_result(extra):
     return extra.get("promise").result()
 
 
-class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TSpecificModel], ABC):
+class ModelNamespace(
+    BaseNamespace,
+    Generic[TLoadModelConfig, TDynamicHandle, TSpecificModel],
+    ABC,
+):
     """
     Abstract namespace for namespaces that deal with models.
 
@@ -75,7 +81,10 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
     @abstractmethod
     def _create_domain_specific_model(
-        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self,
+        port: BaseClientPort,
+        instance_reference: str,
+        descriptor: ModelDescriptor,
     ) -> TSpecificModel:
         """
         Method for creating a domain-specific model.
@@ -83,13 +92,17 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         pass
 
     @abstractmethod
-    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> TDynamicHandle:
+    def _create_domain_dynamic_handle(
+        self, port: BaseClientPort, specifier: ModelSpecifier
+    ) -> TDynamicHandle:
         """
         Method for creating a domain-specific dynamic handle.
         """
         pass
 
-    def create_dynamic_handle(self, query: Union[ModelQuery, str]) -> TDynamicHandle:
+    def create_dynamic_handle(
+        self, query: Union[ModelQuery, str]
+    ) -> TDynamicHandle:
         """
         Get a dynamic model handle for any loaded model that satisfies the given query.
 
@@ -126,27 +139,41 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         if isinstance(query, str):
             query = {"identifier": query}
         else:
-            assert isinstance(query, dict), f"query must be str or dict, got {type(query)}"
+            assert isinstance(
+                query, dict
+            ), f"query must be str or dict, got {type(query)}"
         if "path" in query:
             path = query.get("path")
             if path is not None and "\\" in path:
-                logger.error(f"Model path should not contain backslashes, received: {path}")
+                logger.error(
+                    f"Model path should not contain backslashes, received: {path}"
+                )
                 raise ValueError("Model path should not contain backslashes.")
 
-        return self._create_domain_dynamic_handle(self._port, {"type": "query", "query": query})
+        return self._create_domain_dynamic_handle(
+            self._port, {"type": "query", "query": query}
+        )
 
-    def create_dynamic_handle_from_instance_reference(self, instance_reference: str) -> TDynamicHandle:
+    def create_dynamic_handle_from_instance_reference(
+        self, instance_reference: str
+    ) -> TDynamicHandle:
         """
         Create a dynamic handle from the internal instance reference.
 
         :alpha:
         """
         return self._create_domain_dynamic_handle(
-            self._port, {"type": "instanceReference", "instanceReference": instance_reference}
+            self._port,
+            {
+                "type": "instanceReference",
+                "instanceReference": instance_reference,
+            },
         )
 
     def load(
-        self, path: str, opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None
+        self,
+        path: str,
+        opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None,
     ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Load a model for inferencing. The first parameter is the model path. The second parameter is an
@@ -189,7 +216,11 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         :return: A promise that resolves to the model that can be used for inferencing
         """
 
-        _assert(isinstance(path, str), f"load: path must be a string, got {type(path)}", logger)
+        _assert(
+            isinstance(path, str),
+            f"load: path must be a string, got {type(path)}",
+            logger,
+        )
 
         promise = self._port._promise_event()
         full_path: str = path
@@ -208,11 +239,15 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
             if message_type == "resolved":
                 full_path = message.get("fullPath")
                 if message.get("ambiguous", False):
-                    logger.warning(f"Multiple models found for {path}. Using the first one.")
+                    logger.warning(
+                        f"Multiple models found for {path}. Using the first one."
+                    )
                 logger.debug(f"Start loading model {full_path}...")
                 start_time = time()
             elif message_type == "success":
-                logger.debug(f"Model {full_path} loaded in {time() - start_time:.3f}s.")
+                logger.debug(
+                    f"Model {full_path} loaded in {time() - start_time:.3f}s."
+                )
                 resolve(
                     self._create_domain_specific_model(
                         self._port,
@@ -222,20 +257,28 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
                 )
             elif message_type == "progress":
                 progress = message.get("progress")
-                logger.debug(f"Model {full_path} loading progress: {progress}%.")
+                logger.debug(
+                    f"Model {full_path} loading progress: {progress}%."
+                )
                 if opts and "on_progress" in opts:
                     on_progress = opts.get("on_progress")
                     if on_progress is not None:
                         on_progress(progress)
             elif message_type == "channelError":
-                logger.error(f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}")
+                logger.error(
+                    f"Failed to load model {full_path}: {pretty_print_error(message.get('error'))}"
+                )
                 reject(ChannelError(message.get("error").get("title")))
 
         def cancel_send(channel_id):
-            logger.info(f"Attempting to send cancel message to channel {channel_id}.")
+            logger.info(
+                f"Attempting to send cancel message to channel {channel_id}."
+            )
             # we choose not to reject with an Exception because the user should not have to handle it
             resolve(None)
-            return self._port.send_channel_message(channel_id, {"type": "cancel"})
+            return self._port.send_channel_message(
+                channel_id, {"type": "cancel"}
+            )
 
         extra = {"is_async": self._port.is_async(), "promise": promise}
         if opts and "signal" in opts:
@@ -252,7 +295,9 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
                         {
                             "layerName": KVConfigLayerName.API_OVERRIDE,
                             "config": self._load_config_to_kv_config(
-                                opts["config"] if opts and "config" in opts else self._default_load_config
+                                opts["config"]
+                                if opts and "config" in opts
+                                else self._default_load_config
                             ),
                         }
                     ]
@@ -270,8 +315,14 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
         :param identifier: The identifier of the model to unload.
         """
-        _assert(isinstance(identifier, str), f"unload: identifier must be a string, got {type(identifier)}", logger)
-        return self._port.call_rpc("unloadModel", {"identifier": identifier}, lambda x: x)
+        _assert(
+            isinstance(identifier, str),
+            f"unload: identifier must be a string, got {type(identifier)}",
+            logger,
+        )
+        return self._port.call_rpc(
+            "unloadModel", {"identifier": identifier}, lambda x: x
+        )
 
     def list_loaded(self) -> LiteralOrCoroutine[List[ModelDescriptor]]:
         """
@@ -279,7 +330,9 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         """
         return self._port.call_rpc("listLoaded", None, lambda x: x)
 
-    def get(self, query: Union[ModelQuery, str]) -> LiteralOrCoroutine[TSpecificModel]:
+    def get(
+        self, query: Union[ModelQuery, str]
+    ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Get a specific model that satisfies the given query. The returned model is tied to the specific
         model at the time of the call.
@@ -314,18 +367,29 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         if isinstance(query, str):
             query = {"identifier": query}
         else:
-            _assert(isinstance(query, dict), f"get: query must be str or dict, got {type(query)}", logger)
+            _assert(
+                isinstance(query, dict),
+                f"get: query must be str or dict, got {type(query)}",
+                logger,
+            )
         query["domain"] = self._namespace
 
         def process_get_result(x):
             if not x or x is None:
-                logger.error(f"Model not found for query: {pretty_print(query)}")
+                logger.error(
+                    f"Model not found for query: {pretty_print(query)}"
+                )
                 raise Exception("Model not found")
-            return self._create_domain_specific_model(self._port, x.get("instanceReference"), x.get("descriptor"))
+            return self._create_domain_specific_model(
+                self._port, x.get("instanceReference"), x.get("descriptor")
+            )
 
         return self._port.call_rpc(
             "getModelInfo",
-            {"specifier": {"type": "query", "query": query}, "throwIfNotFound": True},
+            {
+                "specifier": {"type": "query", "query": query},
+                "throwIfNotFound": True,
+            },
             lambda x: x.get("extra").get("process_result")(x),
             extra={"process_result": process_get_result},
         )
@@ -335,51 +399,85 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
     # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(
-        self, identifier: str, path: str, load_opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None
+        self,
+        identifier: str,
+        path: str,
+        load_opts: Optional[BaseLoadModelOpts[TLoadModelConfig]] = None,
     ) -> LiteralOrCoroutine[TSpecificModel]:
         """
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.
         """
-        _assert(isinstance(identifier, str), f"identifier must be a string, got {type(identifier)}", logger)
-        _assert(isinstance(path, str), f"path must be a string, got {type(path)}", logger)
+        _assert(
+            isinstance(identifier, str),
+            f"identifier must be a string, got {type(identifier)}",
+            logger,
+        )
+        _assert(
+            isinstance(path, str),
+            f"path must be a string, got {type(path)}",
+            logger,
+        )
         try:
-            logger.debug(f"Attempting to get model with identifier {identifier}.")
+            logger.debug(
+                f"Attempting to get model with identifier {identifier}."
+            )
             return self.get({"identifier": identifier})
         except Exception:
-            logger.debug(f"Model with identifier {identifier} not found. Attempting to load model from path {path}.")
+            logger.debug(
+                f"Model with identifier {identifier} not found. Attempting to load model from path {path}."
+            )
             if load_opts:
                 load_opts["identifier"] = identifier
             return self.load(path, load_opts)
 
 
 class EmbeddingNamespace(
-    ModelNamespace[EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
+    ModelNamespace[
+        EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel
+    ],
 ):
     _namespace = "embedding"
     _default_load_config: EmbeddingLoadModelConfig = {}
 
-    def _load_config_to_kv_config(self, config: EmbeddingLoadModelConfig) -> KVConfig:
+    def _load_config_to_kv_config(
+        self, config: EmbeddingLoadModelConfig
+    ) -> KVConfig:
         fields = {
-            "llama.acceleration.offloadRatio": config.get("gpu_offload", {}).get("ratio"),
-            "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get("main_gpu"),
-            "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get("tensor_split"),
+            "llama.acceleration.offloadRatio": config.get(
+                "gpu_offload", {}
+            ).get("ratio"),
+            "llama.acceleration.mainGpu": config.get("gpu_offload", {}).get(
+                "main_gpu"
+            ),
+            "llama.acceleration.tensorSplit": config.get("gpu_offload", {}).get(
+                "tensor_split"
+            ),
             "embedding.load.contextLength": config.get("context_length"),
             "llama.keepModelInMemory": config.get("keep_model_in_memory"),
             "llama.tryMmap": config.get("try_mmap"),
         }
         if "rope_frequency_base" in config:
-            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(config.get("rope_frequency_base"), 0, 0)
+            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(
+                config.get("rope_frequency_base"), 0, 0
+            )
         if "rope_frequency_scale" in config:
-            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(config.get("rope_frequency_scale"), 0, 0)
+            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(
+                config.get("rope_frequency_scale"), 0, 0
+            )
         return convert_dict_to_kv_config(fields)
 
     def _create_domain_specific_model(
-        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self,
+        port: BaseClientPort,
+        instance_reference: str,
+        descriptor: ModelDescriptor,
     ) -> EmbeddingSpecificModel:
         return EmbeddingSpecificModel(port, instance_reference, descriptor)
 
-    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> EmbeddingDynamicHandle:
+    def _create_domain_dynamic_handle(
+        self, port: BaseClientPort, specifier: ModelSpecifier
+    ) -> EmbeddingDynamicHandle:
         return EmbeddingDynamicHandle(port, specifier)
 
 
@@ -404,25 +502,44 @@ class LLMNamespace(
             if isinstance(gpu_offload, float):
                 fields["llama.acceleration.offloadRatio"] = gpu_offload
             else:
-                assert not isinstance(gpu_offload, int) and gpu_offload is not None
-                fields["llama.acceleration.offloadRatio"] = gpu_offload.get("ratio")
-                fields["llama.acceleration.mainGpu"] = gpu_offload.get("main_gpu")
-                fields["llama.acceleration.tensorSplit"] = gpu_offload.get("tensor_split")
+                assert (
+                    not isinstance(gpu_offload, int) and gpu_offload is not None
+                )
+                fields["llama.acceleration.offloadRatio"] = gpu_offload.get(
+                    "ratio"
+                )
+                fields["llama.acceleration.mainGpu"] = gpu_offload.get(
+                    "main_gpu"
+                )
+                fields["llama.acceleration.tensorSplit"] = gpu_offload.get(
+                    "tensor_split"
+                )
 
         if "rope_frequency_base" in config:
-            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(config.get("rope_frequency_base"), 0, 0)
+            fields["llama.ropeFrequencyBase"] = number_to_checkbox_numeric(
+                config.get("rope_frequency_base"), 0, 0
+            )
         if "rope_frequency_scale" in config:
-            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(config.get("rope_frequency_scale"), 0, 0)
+            fields["llama.ropeFrequencyScale"] = number_to_checkbox_numeric(
+                config.get("rope_frequency_scale"), 0, 0
+            )
         if "seed" in config:
-            fields["llama.seed"] = number_to_checkbox_numeric(config.get("seed"), -1, 0)
+            fields["llama.seed"] = number_to_checkbox_numeric(
+                config.get("seed"), -1, 0
+            )
         return convert_dict_to_kv_config(fields)
 
     def _create_domain_specific_model(
-        self, port: BaseClientPort, instance_reference: str, descriptor: ModelDescriptor
+        self,
+        port: BaseClientPort,
+        instance_reference: str,
+        descriptor: ModelDescriptor,
     ) -> LLMSpecificModel:
         return LLMSpecificModel(port, instance_reference, descriptor)
 
-    def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
+    def _create_domain_dynamic_handle(
+        self, port: BaseClientPort, specifier: ModelSpecifier
+    ) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
 
     # TODO preprocessors

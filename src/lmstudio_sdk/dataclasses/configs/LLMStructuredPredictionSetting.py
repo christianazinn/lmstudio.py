@@ -2,7 +2,8 @@ from typing import Any, Dict, Literal, Union
 
 
 LLMStructuredPredictionSetting = Union[
-    Dict[Literal["type"], Literal["none"]], Dict[Literal["type", "jsonSchema"], Union[Literal["json"], Any]]
+    Dict[Literal["type"], Literal["none"]],
+    Dict[Literal["type", "jsonSchema"], Union[Literal["json"], Any]],
 ]
 
 """

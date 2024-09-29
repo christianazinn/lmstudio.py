@@ -36,5 +36,9 @@ class DynamicHandle:
             lambda x: x.get("descriptor", None) if x else None,
         )
 
-    def get_load_config(self, postprocess: Callable[[dict], Any] = lambda x: x) -> LiteralOrCoroutine[KVConfig]:
-        return self._port.call_rpc("getLoadConfig", {"specifier": self._specifier}, postprocess)
+    def get_load_config(
+        self, postprocess: Callable[[dict], Any] = lambda x: x
+    ) -> LiteralOrCoroutine[KVConfig]:
+        return self._port.call_rpc(
+            "getLoadConfig", {"specifier": self._specifier}, postprocess
+        )

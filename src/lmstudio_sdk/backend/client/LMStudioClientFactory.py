@@ -12,7 +12,9 @@ def LMStudioClient(
     """
     Constructs an instance of either `AsyncLMStudioClient` or `SyncLMStudioClient`. Just `await` for async!
     """
-    is_async = inspect.currentframe().f_back.f_code.co_flags & inspect.CO_COROUTINE
+    is_async = (
+        inspect.currentframe().f_back.f_code.co_flags & inspect.CO_COROUTINE
+    )
     client = (
         AsyncLMStudioClient(base_url, client_identifier, client_passkey)
         if is_async

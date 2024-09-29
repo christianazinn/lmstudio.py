@@ -12,7 +12,13 @@ class KVConfig(TypedDict):
 
 
 def convert_dict_to_kv_config(kv_dict: dict) -> KVConfig:
-    return {"fields": [KVConfigField(key=k, value=v) for k, v in kv_dict.items() if v and v is not None]}
+    return {
+        "fields": [
+            KVConfigField(key=k, value=v)
+            for k, v in kv_dict.items()
+            if v and v is not None
+        ]
+    }
 
 
 def find_key_in_kv_config(kv_config: KVConfig, key: str) -> Any:

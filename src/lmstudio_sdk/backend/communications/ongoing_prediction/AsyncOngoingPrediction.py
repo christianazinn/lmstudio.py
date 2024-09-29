@@ -3,8 +3,18 @@ import asyncio
 from abc import ABC
 from typing import Any, AsyncIterator, Callable, List, Optional
 
-from ....dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
-from .BaseOngoingPrediction import BaseOngoingPrediction, BaseStreamableIterator, TFinal, TFragment
+from ....dataclasses import (
+    ModelDescriptor,
+    KVConfig,
+    LLMPredictionStats,
+    PredictionResult,
+)
+from .BaseOngoingPrediction import (
+    BaseOngoingPrediction,
+    BaseStreamableIterator,
+    TFinal,
+    TFragment,
+)
 
 
 # TODO polish
@@ -61,7 +71,10 @@ class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
         return item
 
 
-class AsyncOngoingPrediction(StreamablePromise[str, PredictionResult], BaseOngoingPrediction[str, PredictionResult]):
+class AsyncOngoingPrediction(
+    StreamablePromise[str, PredictionResult],
+    BaseOngoingPrediction[str, PredictionResult],
+):
     """
     Represents an ongoing prediction.
 
@@ -113,7 +126,12 @@ class AsyncOngoingPrediction(StreamablePromise[str, PredictionResult], BaseOngoi
     @staticmethod
     def create(
         on_cancel: Callable[[], None],
-    ) -> tuple[AsyncOngoingPrediction, Callable[..., None], Callable[..., None], Callable[[str], None]]:
+    ) -> tuple[
+        AsyncOngoingPrediction,
+        Callable[..., None],
+        Callable[..., None],
+        Callable[[str], None],
+    ]:
         ongoing_prediction = AsyncOngoingPrediction(on_cancel)
 
         def finished(
