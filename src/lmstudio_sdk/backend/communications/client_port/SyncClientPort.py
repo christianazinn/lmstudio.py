@@ -4,13 +4,13 @@ import websocket
 from typing import Any, Callable
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
+from ....utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
 
 
 logger = get_logger(__name__)
 
 
-class ClientPort(BaseClientPort):
+class SyncClientPort(BaseClientPort):
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self._lock = threading.Lock()

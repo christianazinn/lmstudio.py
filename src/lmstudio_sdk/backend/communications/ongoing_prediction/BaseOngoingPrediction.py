@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, List, Optional, TypeVar
 
-from ...dataclasses import PredictionResult
+from ....dataclasses import PredictionResult
 
 TFragment = TypeVar("TFragment")
 TFinal = TypeVar("TFinal")

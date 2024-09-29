@@ -4,7 +4,6 @@ TODO: sync code does not respect SIGINT during blocking channel operations like 
 TODO: README + docs
 TODO: preprocessors and generators
 
-TODO: async/sync distinction for AbortSignal, BufferedEvent
 TODO: pydantic runtime type checking
 
 UTD since d424b042012699c5d41f9dd3c5b3a5b33677f69d otherwise

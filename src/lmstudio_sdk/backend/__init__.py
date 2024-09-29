@@ -4,8 +4,8 @@ from .communications import (
     AsyncOngoingPrediction,
     BaseClientPort,
     BaseOngoingPrediction,
-    ClientPort,
-    OngoingPrediction,
+    SyncClientPort,
+    SyncOngoingPrediction,
 )
 from .handles import DynamicHandle, EmbeddingDynamicHandle, EmbeddingSpecificModel, LLMDynamicHandle, LLMSpecificModel
 from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, ModelNamespace
@@ -16,7 +16,6 @@ __all__ = [
     "AsyncOngoingPrediction",
     "BaseClientPort",
     "BaseOngoingPrediction",
-    "ClientPort",
     "DiagnosticsNamespace",
     "DynamicHandle",
     "EmbeddingDynamicHandle",
@@ -27,6 +26,7 @@ __all__ = [
     "LLMSpecificModel",
     "LMStudioClient",
     "ModelNamespace",
-    "OngoingPrediction",
+    "SyncClientPort",
+    "SyncOngoingPrediction",
     "SyncLMStudioClient",
 ]

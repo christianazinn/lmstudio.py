@@ -4,7 +4,7 @@ import websockets
 from typing import Any, Callable
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, pretty_print_error, RPCError
+from ....utils import get_logger, pretty_print, pretty_print_error, RPCError
 
 
 logger = get_logger(__name__)

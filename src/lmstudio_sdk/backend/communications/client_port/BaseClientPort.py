@@ -2,7 +2,7 @@ import threading
 import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict
-from ...utils import get_logger, PseudoFuture
+from ....utils import get_logger, PseudoFuture
 
 
 logger = get_logger(__name__)

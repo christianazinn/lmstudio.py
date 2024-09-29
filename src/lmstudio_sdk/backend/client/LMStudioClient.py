@@ -90,7 +90,7 @@ class LMStudioClient(ABC):
         if is_async:
             from ..communications import AsyncClientPort as ClientPort
         else:
-            from ..communications import ClientPort
+            from ..communications import SyncClientPort as ClientPort
         logger.info(
             f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
         )

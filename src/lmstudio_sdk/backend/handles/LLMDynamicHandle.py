@@ -20,7 +20,7 @@ from ...dataclasses import (
 )
 from ...utils import (
     _assert,
-    BufferedEvent,
+    BaseBufferedEvent,
     ChannelError,
     get_logger,
     LiteralOrCoroutine,
@@ -128,7 +128,7 @@ class LLMDynamicHandle(DynamicHandle):
         model_specifier: ModelSpecifier,
         context: LLMContext,
         prediction_config_stack: KVConfigStack,
-        cancel_event: BufferedEvent,
+        cancel_event: BaseBufferedEvent,
         extra_opts: LLMPredictionExtraOpts,
         on_fragment: Callable[[str], None],
         on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
@@ -199,7 +199,7 @@ class LLMDynamicHandle(DynamicHandle):
         """
         Use the loaded model to predict text.
 
-        This method returns an {@link OngoingPrediction} object. An ongoing prediction can be used as a
+        This method returns an {@link SyncOngoingPrediction} object. An ongoing prediction can be used as a
         promise (if you only care about the final result) or as an async iterable (if you want to
         stream the results as they are being generated).
 
@@ -245,11 +245,13 @@ class LLMDynamicHandle(DynamicHandle):
 
         config, extra_opts = self.__split_opts(opts)
 
-        cancel_event, emit_cancel_event = BufferedEvent.create()
         if self._port.is_async():
             from ..communications import AsyncOngoingPrediction as OngoingPrediction
+            from ...utils import AsyncBufferedEvent as BufferedEvent
         else:
-            from ..communications import OngoingPrediction
+            from ..communications import SyncOngoingPrediction as OngoingPrediction
+            from ...utils import SyncBufferedEvent as BufferedEvent
+        cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         config["stop_strings"] = []
@@ -299,7 +301,7 @@ class LLMDynamicHandle(DynamicHandle):
         """
         Use the loaded model to generate a response based on the given history.
 
-        This method returns an {@link OngoingPrediction} object. An ongoing prediction can be used as a
+        This method returns an {@link SyncOngoingPrediction} object. An ongoing prediction can be used as a
         promise (if you only care about the final result) or as an async iterable (if you want to
         stream the results as they are being generated).
 
@@ -355,11 +357,13 @@ class LLMDynamicHandle(DynamicHandle):
     def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         config, extra_opts = self.__split_opts(opts)
 
-        cancel_event, emit_cancel_event = BufferedEvent.create()
         if self._port.is_async():
             from ..communications import AsyncOngoingPrediction as OngoingPrediction
+            from ...utils import AsyncBufferedEvent as BufferedEvent
         else:
-            from ..communications import OngoingPrediction
+            from ..communications import SyncOngoingPrediction as OngoingPrediction
+            from ...utils import SyncBufferedEvent as BufferedEvent
+        cancel_event, emit_cancel_event = BufferedEvent.create()
         ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
 
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
