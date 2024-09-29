@@ -34,11 +34,12 @@ class SyncLMStudioClient(LMStudioClient):
                     self._is_localhost_with_given_port_lmstudio_server(port)
                 )
                 logger.info(
-                    f"Found LM Studio server on localhost port {successful_port}."
+                    "Found LM Studio server on localhost port %d.",
+                    successful_port,
                 )
                 return f"ws://127.0.0.1:{successful_port}"
             except ValueError:
-                logger.debug(f"Failed to connect to LM Studio on port {port}.")
+                logger.debug("Failed to connect to LM Studio on port %d.", port)
                 continue
 
         logger.error(
@@ -66,7 +67,7 @@ class SyncLMStudioClient(LMStudioClient):
         self._validate_base_url_or_throw(self.base_url)
 
         self._create_ports(False)
-        logger.info(f"Connecting to LM Studio server at {self.base_url}...")
+        logger.info("Connecting to LM Studio server at %s...", self.base_url)
         try:
             self.llm.connect()
             logger.debug("LLM port connected, connecting to embedding port...")
@@ -82,17 +83,17 @@ class SyncLMStudioClient(LMStudioClient):
             logger.info("Connected to LM Studio server.")
         except ConnectionRefusedError:
             logger.error(
-                f"Failed to connect to LM Studio server at {self.base_url}."
+                "Failed to connect to LM Studio server at %s.", self.base_url
             )
             raise ValueError(
-                f"Failed to connect to LM Studio server at {self.base_url}."
+                "Failed to connect to LM Studio server at %s.", self.base_url
             )
 
         return self
 
     def close(self):
         logger.info(
-            f"Closing connection to LM Studio server at {self.base_url}..."
+            "Closing connection to LM Studio server at %s...", self.base_url
         )
         self.llm.close()
         logger.debug("LLM port closed, closing embedding port...")

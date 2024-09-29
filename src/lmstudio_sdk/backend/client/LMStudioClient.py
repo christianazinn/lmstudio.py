@@ -1,32 +1,27 @@
+import urllib.parse
 from abc import ABC, abstractmethod
 from typing import Optional
-from urllib.parse import urlparse
 
-from ...utils import generate_random_base64, get_logger
-from ..namespaces import (
-    DiagnosticsNamespace,
-    EmbeddingNamespace,
-    LLMNamespace,
-    SystemNamespace,
-)
+import lmstudio_sdk.utils as utils
+import lmstudio_sdk.backend.namespaces as namespaces
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class LMStudioClient(ABC):
     client_identifier: str
     base_url: Optional[str]
 
-    llm: LLMNamespace = None
-    embedding: EmbeddingNamespace = None
-    system: SystemNamespace = None
-    diagnostics: DiagnosticsNamespace = None
+    llm: namespaces.LLMNamespace = None
+    embedding: namespaces.EmbeddingNamespace = None
+    system: namespaces.SystemNamespace = None
+    diagnostics: namespaces.DiagnosticsNamespace = None
 
     def _validate_base_url_or_throw(self, base_url):
         error_msg = None
         try:
-            url = urlparse(base_url)
+            url = urllib.parse.urlparse(base_url)
         except ValueError:
             error_msg = f"Failed to construct LMStudioClient. The baseUrl passed in is invalid. Received: {base_url}"
             logger.error(error_msg)
@@ -123,10 +118,10 @@ class LMStudioClient(ABC):
             self.__client_passkey,
         )
 
-        self.llm = LLMNamespace(llm_port)
-        self.embedding = EmbeddingNamespace(embedding_port)
-        self.system = SystemNamespace(system_port)
-        self.diagnostics = DiagnosticsNamespace(diagnostics_port)
+        self.llm = namespaces.LLMNamespace(llm_port)
+        self.embedding = namespaces.EmbeddingNamespace(embedding_port)
+        self.system = namespaces.SystemNamespace(system_port)
+        self.diagnostics = namespaces.DiagnosticsNamespace(diagnostics_port)
         logger.debug("Finished initializing ports and namespaces.")
 
     # ensure you connect and close properly!
@@ -136,6 +131,10 @@ class LMStudioClient(ABC):
         client_identifier: Optional[str],
         client_passkey: Optional[str],
     ):
-        self.client_identifier = client_identifier or generate_random_base64(18)
-        self.__client_passkey = client_passkey or generate_random_base64(18)
+        self.client_identifier = (
+            client_identifier or utils.generate_random_base64(18)
+        )
+        self.__client_passkey = client_passkey or utils.generate_random_base64(
+            18
+        )
         self.base_url = base_url
