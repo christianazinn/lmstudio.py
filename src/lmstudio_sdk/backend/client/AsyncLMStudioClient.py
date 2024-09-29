@@ -1,5 +1,6 @@
 import asyncio
 import json
+from urllib.error import URLError
 from http.client import HTTPConnection
 
 from ...utils import lms_default_ports, get_logger
@@ -11,27 +12,24 @@ logger = get_logger(__name__)
 
 class AsyncLMStudioClient(LMStudioClient):
     async def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
-        def fetch():
-            conn = HTTPConnection("127.0.0.1", port)
-            try:
-                conn.request("GET", "lmstudio-greeting")
-                response = conn.getresponse()
-                if response.status != 200:
-                    raise ValueError("Status is not 200.")
-
-                body = response.read().decode("utf-8")
-                json_response = json.loads(body)
-                if not json_response.get("lmstudio", False):
-                    raise ValueError("Not an LM Studio server.")
-
-                return port
-            finally:
-                conn.close()
-
+        conn = HTTPConnection("127.0.0.1", port)
         try:
-            return await asyncio.to_thread(fetch)
-        except Exception as e:
+            conn.request("GET", "/lmstudio-greeting")
+            response = conn.getresponse()
+
+            if response.status != 200:
+                raise ValueError("Status is not 200.")
+
+            body = response.read().decode("utf-8")
+            json_response = json.loads(body)
+            if not json_response.get("lmstudio", False):
+                raise ValueError("Not an LM Studio server.")
+
+            return port
+        except (URLError, ValueError) as e:
             raise ValueError(f"Failed to connect to the server: {str(e)}")
+        finally:
+            conn.close()
 
     async def _guess_base_url(self) -> str:
         try:
