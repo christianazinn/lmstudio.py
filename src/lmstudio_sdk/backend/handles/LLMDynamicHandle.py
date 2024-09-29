@@ -1,5 +1,4 @@
 from typing import Any, Callable, List, Tuple
-from functools import partial
 
 from ...dataclasses import (
     convert_dict_to_kv_config,
@@ -20,6 +19,7 @@ from ...dataclasses import (
     ModelSpecifier,
 )
 from ...utils import (
+    _assert,
     BufferedEvent,
     ChannelError,
     get_logger,
@@ -40,7 +40,7 @@ def predict_internal_process_result(extra):
     cancel_send = original_extra.get("cancel_send")
     channel_id = extra.get("channelId")
 
-    cancel_event.subscribeOnce(partial(cancel_send, channel_id))
+    cancel_event.subscribeOnce(lambda: cancel_send(channel_id))
 
     return original_extra
 
@@ -63,7 +63,6 @@ class LLMDynamicHandle(DynamicHandle):
     def __prediction_config_to_kv_config(self, prediction_config: LLMPredictionConfig | None) -> KVConfig:
         fields = []
         if prediction_config is not None:
-            # HACK i hate this
             for default_key in [
                 "temperature",
                 "context_overflow_policy",
@@ -176,7 +175,7 @@ class LLMDynamicHandle(DynamicHandle):
             logger.info(f"Attempting to send cancel message to channel {channel_id}.")
             if not finished.is_set():
                 return self._port.send_channel_message(channel_id, {"type": "cancel"})
-            # HACK side effect of the decorator, easier to just eat an extra debug message
+            # HACK easier to just eat a debug message
             return self._port.send_channel_message(None, None)
 
         extra = extra or {}
@@ -242,6 +241,8 @@ class LLMDynamicHandle(DynamicHandle):
         :param prompt: The prompt to use for prediction.
         :param opts: Options for the prediction.
         """
+        _assert(isinstance(prompt, str), f"complete: prompt must be a string, got {type(prompt)}", logger)
+
         config, extra_opts = self.__split_opts(opts)
 
         cancel_event, emit_cancel_event = BufferedEvent.create()
@@ -344,7 +345,12 @@ class LLMDynamicHandle(DynamicHandle):
         :param history: The LLMChatHistory array to use for generating a response.
         :param opts: Options for the prediction.
         """
-        return self.predict(self.__resolve_conversation_context(history), opts)
+        try:
+            resolved_context = self.__resolve_conversation_context(history)
+        except Exception as e:
+            logger.error(f"Failed to resolve conversation context: {e}")
+            raise ValueError("History must be a list conforming to LLMConversationContextInput, got something else.")
+        return self.predict(resolved_context, opts)
 
     def predict(self, context: LLMContext, opts: LLMPredictionOpts) -> LiteralOrCoroutine[BaseOngoingPrediction]:
         config, extra_opts = self.__split_opts(opts)
@@ -396,17 +402,21 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
-        if not isinstance(input_string, str):
-            logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"unstable_tokenize: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
         )
 
     def unstable_count_tokens(self, input_string: str) -> LiteralOrCoroutine[int]:
-        if not isinstance(input_string, str):
-            logger.error(f"unstable_count_tokens: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"unstable_count_tokens: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "countTokens",
             {"specifier": self._specifier, "inputString": input_string},

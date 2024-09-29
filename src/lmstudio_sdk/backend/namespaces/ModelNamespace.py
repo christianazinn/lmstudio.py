@@ -15,6 +15,7 @@ from ...dataclasses import (
     ModelSpecifier,
 )
 from ...utils import (
+    _assert,
     ChannelError,
     get_logger,
     LiteralOrCoroutine,
@@ -122,9 +123,10 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
         :param query: The query to use to get the model.
         """
-        # TODO figure out how to do union type checking
         if isinstance(query, str):
             query = {"identifier": query}
+        else:
+            assert isinstance(query, dict), f"query must be str or dict, got {type(query)}"
         if "path" in query:
             path = query.get("path")
             if path is not None and "\\" in path:
@@ -186,6 +188,8 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         :param opts: Options for loading the model.
         :return: A promise that resolves to the model that can be used for inferencing
         """
+
+        _assert(isinstance(path, str), f"load: path must be a string, got {type(path)}", logger)
 
         promise = self._port._promise_event()
         full_path: str = path
@@ -266,9 +270,7 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
 
         :param identifier: The identifier of the model to unload.
         """
-        if not isinstance(identifier, str):
-            logger.error(f"unload: identifier must be a string, got {type(identifier)}")
-            raise ValueError("Identifier must be a string.")
+        _assert(isinstance(identifier, str), f"unload: identifier must be a string, got {type(identifier)}", logger)
         return self._port.call_rpc("unloadModel", {"identifier": identifier}, lambda x: x)
 
     def list_loaded(self) -> LiteralOrCoroutine[List[ModelDescriptor]]:
@@ -309,9 +311,10 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         const prediction = model.complete("...");
         ```
         """
-        # TODO figure out how to do union type checking
         if isinstance(query, str):
             query = {"identifier": query}
+        else:
+            _assert(isinstance(query, dict), f"get: query must be str or dict, got {type(query)}", logger)
         query["domain"] = self._namespace
 
         def process_get_result(x):
@@ -338,6 +341,8 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
         Extremely early alpha. Will cause errors in console. Can potentially throw if called in
         parallel. Do not use in production yet.
         """
+        _assert(isinstance(identifier, str), f"identifier must be a string, got {type(identifier)}", logger)
+        _assert(isinstance(path, str), f"path must be a string, got {type(path)}", logger)
         try:
             logger.debug(f"Attempting to get model with identifier {identifier}.")
             return self.get({"identifier": identifier})
@@ -348,7 +353,6 @@ class ModelNamespace(BaseNamespace, Generic[TLoadModelConfig, TDynamicHandle, TS
             return self.load(path, load_opts)
 
 
-# TODO custom ports with type locks
 class EmbeddingNamespace(
     ModelNamespace[EmbeddingLoadModelConfig, EmbeddingDynamicHandle, EmbeddingSpecificModel],
 ):
@@ -421,4 +425,4 @@ class LLMNamespace(
     def _create_domain_dynamic_handle(self, port: BaseClientPort, specifier: ModelSpecifier) -> LLMDynamicHandle:
         return LLMDynamicHandle(port, specifier)
 
-    # TODO registerPromptPreprocessor
+    # TODO preprocessors

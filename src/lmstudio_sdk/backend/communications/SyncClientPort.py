@@ -20,13 +20,11 @@ class ClientPort(BaseClientPort):
         data = json.loads(message)
         logger.recv(f"Message received on sync port {self.endpoint}:\n{pretty_print(data)}")
 
-        # TODO: more robust data handling
         data_type = data.get("type", None)
         if data_type is None:
             return
 
         # channel endpoints
-        # TODO: error handling
         if data_type == "channelSend":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
@@ -47,14 +45,12 @@ class ClientPort(BaseClientPort):
         # RPC endpoints
         elif data_type == "rpcResult" or data_type == "rpcError":
             call_id = data.get("callId", -1)
-            # TODO we should pass only the error dict
             if call_id in self.rpc_handlers:
                 self.rpc_handlers[call_id](data)
                 del self.rpc_handlers[call_id]
 
     def on_error(self, ws, error):
-        # TODO I'm pretty sure this is a WebSocket error not a message error
-        pass
+        logger.error(f"Error in WebSocket connection to {self.uri}: {error}")
 
     def on_close(self, ws, close_status_code, close_msg):
         self._connection_event.clear()
@@ -122,7 +118,6 @@ class ClientPort(BaseClientPort):
     def _promise_event(self):
         return PseudoFuture()
 
-    # TODO type hint for return type
     def _call_rpc(
         self,
         payload: dict,
@@ -154,6 +149,3 @@ class ClientPort(BaseClientPort):
             return x
 
         return process_result(postprocess(result))
-
-
-# TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

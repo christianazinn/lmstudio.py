@@ -1,7 +1,7 @@
 from typing import List
 
 from ...dataclasses import find_key_in_kv_config
-from ...utils import get_logger, LiteralOrCoroutine
+from ...utils import _assert, get_logger, LiteralOrCoroutine
 from .DynamicHandle import DynamicHandle
 
 
@@ -28,9 +28,11 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        if not isinstance(input_string, str):
-            logger.error(f"embed_string: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"embed_string: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "embedString", {"specifier": self._specifier, "inputString": input_string}, lambda x: x
         )
@@ -62,9 +64,11 @@ class EmbeddingDynamicHandle(DynamicHandle):
         :param input_string: The string to tokenize.
         :return: A list of integers representing the tokenized string.
         """
-        if not isinstance(input_string, str):
-            logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"unstable_tokenize: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
         )

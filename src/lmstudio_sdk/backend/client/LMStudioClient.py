@@ -95,7 +95,6 @@ class LMStudioClient(ABC):
             f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
         )
 
-        # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints
         llm_port = ClientPort(self.base_url, "llm", self.client_identifier, self.__client_passkey)
         embedding_port = ClientPort(self.base_url, "embedding", self.client_identifier, self.__client_passkey)
         system_port = ClientPort(self.base_url, "system", self.client_identifier, self.__client_passkey)

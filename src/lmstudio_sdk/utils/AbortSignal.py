@@ -38,12 +38,3 @@ class AbortSignal:
     async def wait_for_abort(self) -> None:
         """Waits for the signal to be aborted."""
         await self._event.wait()
-
-
-class AbortController:
-    def __init__(self):
-        self.signal = AbortSignal()
-
-    def abort(self) -> None:
-        """Aborts the associated signal."""
-        self.signal.abort()

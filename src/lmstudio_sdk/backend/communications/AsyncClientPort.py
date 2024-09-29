@@ -11,7 +11,6 @@ logger = get_logger(__name__)
 
 
 class AsyncClientPort(BaseClientPort):
-    # TODO enums for allowable channel and rpc endpoints
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self.running = False
@@ -57,7 +56,6 @@ class AsyncClientPort(BaseClientPort):
                 data = json.loads(message)
                 logger.recv(f"Message received on async port {self.endpoint}:\n{pretty_print(data)}")
 
-                # TODO: more robust data handling
                 data_type = data.get("type", None)
                 if data_type is None:
                     continue
@@ -115,7 +113,6 @@ class AsyncClientPort(BaseClientPort):
     def _promise_event(self):
         return asyncio.Future()
 
-    # TODO type hint for return type
     async def _call_rpc(
         self,
         payload: dict,
@@ -146,6 +143,3 @@ class AsyncClientPort(BaseClientPort):
             return x
 
         return process_result(postprocess(result))
-
-
-# TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort

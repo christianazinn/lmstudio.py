@@ -72,8 +72,6 @@ class BaseClientPort(ABC):
     def is_async(self):
         return asyncio.iscoroutinefunction(self._send_payload)
 
-    # TODO endpoint enum
-    # TODO: this is an absolutely atrocious design pattern with extra, figure it out
     def create_channel(
         self,
         endpoint: str,
@@ -110,7 +108,6 @@ class BaseClientPort(ABC):
 
         return self._send_payload(payload)
 
-    # TODO type hint for return type
     def call_rpc(
         self, endpoint: str, parameter: Any | None, postprocess: Callable[[dict], Any], extra: dict | None = None
     ):

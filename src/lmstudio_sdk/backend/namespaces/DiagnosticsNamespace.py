@@ -1,7 +1,10 @@
 from typing import Callable, Literal, TypedDict
 
-from ..communications import BaseClientPort
+from ...utils import _assert, get_logger
 from .BaseNamespace import BaseNamespace
+
+
+logger = get_logger(__name__)
 
 
 class DiagnosticsLogEventData(TypedDict):
@@ -16,7 +19,7 @@ class DiagnosticsLogEvent(TypedDict):
     data: DiagnosticsLogEventData
 
 
-class DiagnosticsNamespace(BaseNamespace[BaseClientPort]):
+class DiagnosticsNamespace(BaseNamespace):
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
         """
         Register a callback to receive log events. Return a function to stop receiving log events.
@@ -24,6 +27,12 @@ class DiagnosticsNamespace(BaseNamespace[BaseClientPort]):
         This method is in alpha. Do not use this method in production yet.
         :alpha:
         """
+
+        _assert(
+            isinstance(listener, Callable),
+            f"unstable_stream_logs: listener must be a callable, got {type(listener)}",
+            logger,
+        )
 
         def unsubscribe(channel_id: int) -> None:
             del self._port.channel_handlers[channel_id]
