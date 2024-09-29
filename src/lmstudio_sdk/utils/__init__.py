@@ -1,8 +1,9 @@
-from .AbortSignal import AbortSignal
-from .BufferedEvent import BufferedEvent
+from .AbortSignal import AsyncAbortSignal, BaseAbortSignal, SyncAbortSignal
+from .BufferedEvent import AsyncBufferedEvent, BaseBufferedEvent, SyncBufferedEvent
 from .logger import get_logger, RECV, SEND, WRAPPER, WEBSOCKET
 from .PseudoFuture import PseudoFuture
 from .utils import (
+    _assert,
     ChannelError,
     generate_random_base64,
     lms_default_ports,
@@ -14,8 +15,11 @@ from .utils import (
 )
 
 __all__ = [
-    "AbortSignal",
-    "BufferedEvent",
+    "_assert",
+    "AsyncAbortSignal",
+    "AsyncBufferedEvent",
+    "BaseAbortSignal",
+    "BaseBufferedEvent",
     "ChannelError",
     "generate_random_base64",
     "get_logger",
@@ -28,6 +32,8 @@ __all__ = [
     "RECV",
     "RPCError",
     "SEND",
+    "SyncAbortSignal",
+    "SyncBufferedEvent",
     "WRAPPER",
     "WEBSOCKET",
 ]

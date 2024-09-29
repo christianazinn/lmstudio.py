@@ -1,5 +1,11 @@
 from typing import Callable, Literal, TypedDict
 
+from ...utils import _assert, get_logger
+from .BaseNamespace import BaseNamespace
+
+
+logger = get_logger(__name__)
+
 
 class DiagnosticsLogEventData(TypedDict):
     type: Literal["llm.prediction.input"]
@@ -13,17 +19,7 @@ class DiagnosticsLogEvent(TypedDict):
     data: DiagnosticsLogEventData
 
 
-class DiagnosticsNamespace:
-    def __init__(self, port):
-        self._port = port
-
-    def connect(self):
-        return self._port.connect()
-
-    def close(self):
-        return self._port.close()
-
-    # TODO make me work
+class DiagnosticsNamespace(BaseNamespace):
     def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
         """
         Register a callback to receive log events. Return a function to stop receiving log events.
@@ -32,9 +28,20 @@ class DiagnosticsNamespace:
         :alpha:
         """
 
-        # TODO implement
-        def unsubscribe() -> None:
-            # Logic to stop receiving log events
-            pass
+        _assert(
+            isinstance(listener, Callable),
+            f"unstable_stream_logs: listener must be a callable, got {type(listener)}",
+            logger,
+        )
 
-        return unsubscribe
+        def unsubscribe(channel_id: int) -> None:
+            del self._port.channel_handlers[channel_id]
+            return self._port.send_channel_message(channel_id, {"type": "channelClose"})
+
+        return self._port.create_channel(
+            "streamLogs",
+            None,
+            listener,
+            lambda x: (lambda: x.get("extra").get("unsubscribe")(x.get("channel_id"))),
+            extra={"unsubscribe": unsubscribe},
+        )

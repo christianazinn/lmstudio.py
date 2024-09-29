@@ -4,7 +4,6 @@ from lmstudio_sdk import LMStudioClient
 
 class TestSystem(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
-        # TODO: remove base URL
         self.client = await LMStudioClient(base_url="ws://localhost:1234")
 
     async def test_create_invalid_client_with_bad_scheme(self) -> None:

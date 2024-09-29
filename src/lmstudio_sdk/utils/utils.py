@@ -3,7 +3,6 @@ from base64 import b64encode
 from secrets import token_bytes
 from typing import Any, Coroutine, Dict, Optional, TypeVar, Union
 
-
 lms_default_ports = [1234]
 
 
@@ -38,6 +37,12 @@ def pretty_print_error(obj):
         return pretty_print(obj)
     except Exception:
         return obj
+
+
+def _assert(condition: bool, message: str, logger):
+    if not condition:
+        logger.error(message)
+        raise ValueError(message)
 
 
 class RPCError(Exception):

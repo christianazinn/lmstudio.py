@@ -1,6 +1,8 @@
 import asyncio
 import json
 from http.client import HTTPConnection
+from typing import Optional
+from urllib.error import URLError
 
 from ...utils import lms_default_ports, get_logger
 from .LMStudioClient import LMStudioClient
@@ -11,27 +13,24 @@ logger = get_logger(__name__)
 
 class AsyncLMStudioClient(LMStudioClient):
     async def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
-        def fetch():
-            conn = HTTPConnection("127.0.0.1", port)
-            try:
-                conn.request("GET", "lmstudio-greeting")
-                response = conn.getresponse()
-                if response.status != 200:
-                    raise ValueError("Status is not 200.")
-
-                body = response.read().decode("utf-8")
-                json_response = json.loads(body)
-                if not json_response.get("lmstudio", False):
-                    raise ValueError("Not an LM Studio server.")
-
-                return port
-            finally:
-                conn.close()
-
+        conn = HTTPConnection("127.0.0.1", port)
         try:
-            return await asyncio.to_thread(fetch)
-        except Exception as e:
+            conn.request("GET", "/lmstudio-greeting")
+            response = conn.getresponse()
+
+            if response.status != 200:
+                raise ValueError("Status is not 200.")
+
+            body = response.read().decode("utf-8")
+            json_response = json.loads(body)
+            if not json_response.get("lmstudio", False):
+                raise ValueError("Not an LM Studio server.")
+
+            return port
+        except (URLError, ValueError) as e:
             raise ValueError(f"Failed to connect to the server: {str(e)}")
+        finally:
+            conn.close()
 
     async def _guess_base_url(self) -> str:
         try:
@@ -56,20 +55,19 @@ class AsyncLMStudioClient(LMStudioClient):
 
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 
-    # TODO: remind user to connect()
     async def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
             self.base_url = await self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
-        self.create_ports(True)
+        self._create_ports(True)
 
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         try:

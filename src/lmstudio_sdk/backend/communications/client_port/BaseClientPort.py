@@ -1,8 +1,8 @@
 import threading
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict
-from ...utils import get_logger, PseudoFuture
+from typing import Any, Callable, Dict, Optional
+from ....utils import get_logger, PseudoFuture
 
 
 logger = get_logger(__name__)
@@ -33,7 +33,7 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
+    def _send_payload(self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None):
         pass
 
     @abstractmethod
@@ -42,8 +42,8 @@ class BaseClientPort(ABC):
         payload: dict,
         complete: threading.Event | asyncio.Event,
         result: dict,
-        callback: Callable[[dict], Any],
-        extra: dict | None,
+        postprocess: Callable[[dict], Any],
+        extra: Optional[dict],
     ):
         pass
 
@@ -52,18 +52,18 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def promise_event(self) -> asyncio.Future | PseudoFuture:
+    def _promise_event(self) -> asyncio.Future | PseudoFuture:
         pass
 
     @classmethod
-    def get_next_channel_id(cls):
+    def __get_next_channel_id(cls):
         with cls.__channel_id_lock:
             channel_id = cls.__next_channel_id
             cls.__next_channel_id += 1
         return channel_id
 
     @classmethod
-    def get_next_rpc_call_id(cls):
+    def __get_next_rpc_call_id(cls):
         with cls.__rpc_call_id_lock:
             call_id = cls.__next_rpc_call_id
             cls.__next_rpc_call_id += 1
@@ -72,18 +72,16 @@ class BaseClientPort(ABC):
     def is_async(self):
         return asyncio.iscoroutinefunction(self._send_payload)
 
-    # TODO endpoint enum
-    # TODO: this is an absolutely atrocious design pattern with extra, figure it out
     def create_channel(
         self,
         endpoint: str,
-        creation_parameter: Any | None,
+        creation_parameter: Optional[dict],
         handler: Callable,
-        callback: Callable,
-        extra: dict | None = None,
+        postprocess: Callable[[dict], Any],
+        extra: Optional[dict] = None,
     ) -> int:
         assert self._websocket is not None
-        channel_id = self.get_next_channel_id()
+        channel_id = self.__get_next_channel_id()
         payload = {
             "type": "channelCreate",
             "endpoint": endpoint,
@@ -97,7 +95,7 @@ class BaseClientPort(ABC):
             f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
         )
 
-        return self._send_payload(payload, {"channelId": channel_id, "extra": extra}, callback=callback)
+        return self._send_payload(payload, extra={"channelId": channel_id, "extra": extra}, postprocess=postprocess)
 
     def send_channel_message(self, channel_id: int, message: dict):
         assert self._websocket is not None
@@ -108,19 +106,15 @@ class BaseClientPort(ABC):
         }
         logger.debug(f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging.")
 
-        # TODO: callback handling in channel method?
         return self._send_payload(payload)
 
-    # TODO type hint for return type
-    # we implement this manually instead of using the decorator because of the different waiting models
     def call_rpc(
-        self, endpoint: str, parameter: Any | None, callback: Callable[[dict], Any], extra: dict | None = None
+        self, endpoint: str, parameter: Any, postprocess: Callable[[dict], Any], extra: Optional[dict] = None
     ):
         assert self._websocket is not None
         result = {}
 
         # dependency injecting a complete event
-        # TODO: type hinting, abstract method
         complete = self._rpc_complete_event()
 
         def rpc_handler(data):
@@ -128,7 +122,7 @@ class BaseClientPort(ABC):
             result.update(data)
             complete.set()
 
-        call_id = self.get_next_rpc_call_id()
+        call_id = self.__get_next_rpc_call_id()
         payload = {
             "type": "rpcCall",
             "endpoint": endpoint,
@@ -142,4 +136,4 @@ class BaseClientPort(ABC):
             f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
         )
 
-        return self._call_rpc(payload, complete, result, callback, extra)
+        return self._call_rpc(payload, complete, result, postprocess, extra)

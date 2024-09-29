@@ -1,17 +1,16 @@
 import asyncio
 import json
 import websockets
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, pretty_print_error, RPCError
+from ....utils import get_logger, pretty_print, pretty_print_error, RPCError
 
 
 logger = get_logger(__name__)
 
 
 class AsyncClientPort(BaseClientPort):
-    # TODO enums for allowable channel and rpc endpoints
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self.running = False
@@ -32,7 +31,7 @@ class AsyncClientPort(BaseClientPort):
         )
         self.running = True
         logger.websocket(f"Async port {self.endpoint} is authenticated. Establishing receive task.")
-        self.receive_task = asyncio.create_task(self.receive_messages())
+        self.receive_task = asyncio.create_task(self.__receive_messages())
 
     async def close(self):
         self.running = False
@@ -48,7 +47,7 @@ class AsyncClientPort(BaseClientPort):
             except asyncio.TimeoutError:
                 logger.error(f"Receive task did not complete in time on async port {self.endpoint}!")
 
-    async def receive_messages(self):
+    async def __receive_messages(self):
         try:
             while self.running:
                 assert self._websocket is not None
@@ -57,7 +56,6 @@ class AsyncClientPort(BaseClientPort):
                 data = json.loads(message)
                 logger.recv(f"Message received on async port {self.endpoint}:\n{pretty_print(data)}")
 
-                # TODO: more robust data handling
                 data_type = data.get("type", None)
                 if data_type is None:
                     continue
@@ -66,7 +64,10 @@ class AsyncClientPort(BaseClientPort):
                 if data_type == "channelSend":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
-                        self.channel_handlers[channel_id](data.get("message", data))
+                        message_content = data.get("message", data)
+                        if message_content.get("type", None) == "log":
+                            message_content = message_content.get("log")
+                        self.channel_handlers[channel_id](message_content)
                 elif data_type == "channelClose":
                     channel_id = data.get("channelId")
                     if channel_id in self.channel_handlers:
@@ -95,31 +96,30 @@ class AsyncClientPort(BaseClientPort):
             self.running = False
 
     async def _send_payload(
-        self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None
+        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
     ):
         if not self._websocket:
             logger.error("Attempted to send payload, but WebSocket connection is not established.")
             raise ValueError("WebSocket connection not established.")
         logger.send(f"Sending payload on async port {self.endpoint}:\n{pretty_print(payload)}")
         await self._websocket.send(json.dumps(payload))
-        if callback:
-            return callback(extra)
+        if postprocess:
+            return postprocess(extra)
         return extra
 
     def _rpc_complete_event(self):
         return asyncio.Event()
 
-    def promise_event(self):
+    def _promise_event(self):
         return asyncio.Future()
 
-    # TODO type hint for return type
     async def _call_rpc(
         self,
         payload: dict,
         complete: asyncio.Event,
         result: dict,
-        callback: Callable[[dict], Any],
-        extra: dict | None = None,
+        postprocess: Callable[[dict], Any],
+        extra: Optional[dict] = None,
     ):
         await self._send_payload(payload)
         logger.debug(
@@ -142,7 +142,4 @@ class AsyncClientPort(BaseClientPort):
                 return x.get("result", x)
             return x
 
-        return process_result(callback(result))
-
-
-# TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort
+        return process_result(postprocess(result))

@@ -1,5 +1,6 @@
 from typing import Any, Callable, Optional
 from ...dataclasses import KVConfig, ModelDescriptor, ModelSpecifier
+from ...utils import LiteralOrCoroutine
 from ..communications import BaseClientPort
 
 
@@ -21,7 +22,7 @@ class DynamicHandle:
         self._port = port
         self._specifier = specifier
 
-    def get_model_info(self) -> Optional[ModelDescriptor]:
+    def get_model_info(self) -> LiteralOrCoroutine[Optional[ModelDescriptor]]:
         """
         Gets the information of the model that is currently associated with this `LLMModel`. If no
         model is currently associated, this will return `None`.
@@ -35,5 +36,5 @@ class DynamicHandle:
             lambda x: x.get("descriptor", None) if x else None,
         )
 
-    def get_load_config(self, callback: Callable[dict, Any] = lambda x: x) -> KVConfig:
-        return self._port.call_rpc("getLoadConfig", {"specifier": self._specifier}, lambda x: x)
+    def get_load_config(self, postprocess: Callable[[dict], Any] = lambda x: x) -> LiteralOrCoroutine[KVConfig]:
+        return self._port.call_rpc("getLoadConfig", {"specifier": self._specifier}, postprocess)

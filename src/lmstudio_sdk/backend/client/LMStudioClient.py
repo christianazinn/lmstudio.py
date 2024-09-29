@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 from urllib.parse import urlparse
 
 from ...utils import generate_random_base64, get_logger
@@ -10,7 +11,7 @@ logger = get_logger(__name__)
 
 class LMStudioClient(ABC):
     client_identifier: str
-    base_url: str | None
+    base_url: Optional[str]
 
     llm: LLMNamespace = None
     embedding: EmbeddingNamespace = None
@@ -74,7 +75,7 @@ class LMStudioClient(ABC):
     def close(self):
         pass
 
-    def create_ports(self, is_async: bool):
+    def _create_ports(self, is_async: bool):
         error_msg = None
         if self.base_url is None:
             error_msg = "Failed to create ports: base_url is None"
@@ -90,12 +91,11 @@ class LMStudioClient(ABC):
         if is_async:
             from ..communications import AsyncClientPort as ClientPort
         else:
-            from ..communications import ClientPort
+            from ..communications import SyncClientPort as ClientPort
         logger.info(
             f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
         )
 
-        # TODO LP: disambiguate ClientPorts so each ClientPort can only call particular endpoints
         llm_port = ClientPort(self.base_url, "llm", self.client_identifier, self.__client_passkey)
         embedding_port = ClientPort(self.base_url, "embedding", self.client_identifier, self.__client_passkey)
         system_port = ClientPort(self.base_url, "system", self.client_identifier, self.__client_passkey)
@@ -110,9 +110,9 @@ class LMStudioClient(ABC):
     # ensure you connect and close properly!
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         self.client_identifier = client_identifier or generate_random_base64(18)
         self.__client_passkey = client_passkey or generate_random_base64(18)

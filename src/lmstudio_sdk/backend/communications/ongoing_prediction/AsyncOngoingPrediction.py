@@ -3,7 +3,7 @@ import asyncio
 from abc import ABC
 from typing import Any, AsyncIterator, Callable, List, Optional
 
-from ...dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
+from ....dataclasses import ModelDescriptor, KVConfig, LLMPredictionStats, PredictionResult
 from .BaseOngoingPrediction import BaseOngoingPrediction, BaseStreamableIterator, TFinal, TFragment
 
 

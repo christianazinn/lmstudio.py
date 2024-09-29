@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -46,9 +47,9 @@ class SyncLMStudioClient(LMStudioClient):
 
     def __init__(
         self,
-        base_url: str | None,
-        client_identifier: str | None,
-        client_passkey: str | None,
+        base_url: Optional[str],
+        client_identifier: Optional[str],
+        client_passkey: Optional[str],
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 
@@ -58,7 +59,7 @@ class SyncLMStudioClient(LMStudioClient):
             self.base_url = self._guess_base_url()
         self._validate_base_url_or_throw(self.base_url)
 
-        self.create_ports(False)
+        self._create_ports(False)
         logger.info(f"Connecting to LM Studio server at {self.base_url}...")
         try:
             self.llm.connect()

@@ -1,5 +1,5 @@
 from typing import Callable, Generic, NotRequired, TypedDict, TypeVar
-from ...utils import AbortSignal
+from ...utils import BaseAbortSignal
 
 
 TLoadModelConfig = TypeVar("TLoadModelConfig")
@@ -22,7 +22,7 @@ class BaseLoadModelOpts(TypedDict, Generic[TLoadModelConfig]):
     The configuration to use when loading the model.
     """
 
-    signal: NotRequired[AbortSignal]
+    signal: NotRequired[BaseAbortSignal]
     """
     An `AbortSignal` to cancel the model loading. This is useful if you wish to add a functionality
     to cancel the model loading.

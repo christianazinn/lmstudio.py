@@ -1,7 +1,7 @@
 from typing import List
 
 from ...dataclasses import find_key_in_kv_config
-from ...utils import get_logger
+from ...utils import _assert, get_logger, LiteralOrCoroutine
 from .DynamicHandle import DynamicHandle
 
 
@@ -21,21 +21,23 @@ class EmbeddingDynamicHandle(DynamicHandle):
     :public:
     """
 
-    def embed_string(self, input_string: str) -> dict[str, List[float]]:
+    def embed_string(self, input_string: str) -> LiteralOrCoroutine[dict[str, List[float]]]:
         """
         Embed a string into a vector representation.
 
         :param input_string: The string to embed.
         :return: A dictionary containing the embedding as a list of floats.
         """
-        if not isinstance(input_string, str):
-            logger.error(f"embed_string: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"embed_string: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "embedString", {"specifier": self._specifier, "inputString": input_string}, lambda x: x
         )
 
-    def unstable_get_context_length(self) -> int:
+    def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
         """
         Get the context length of the model.
 
@@ -47,7 +49,7 @@ class EmbeddingDynamicHandle(DynamicHandle):
             lambda x: find_key_in_kv_config(x, "embedding.load.contextLength") or -1,
         )
 
-    def unstable_get_eval_batch_size(self) -> int:
+    def unstable_get_eval_batch_size(self) -> LiteralOrCoroutine[int]:
         """
         Get the evaluation batch size of the model.
 
@@ -55,16 +57,18 @@ class EmbeddingDynamicHandle(DynamicHandle):
         """
         return self.get_load_config(lambda x: find_key_in_kv_config(x, "embedding.load.llama.evalBatchSize") or -1)
 
-    def unstable_tokenize(self, input_string: str) -> List[int]:
+    def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
         """
         Tokenize the input string.
 
         :param input_string: The string to tokenize.
         :return: A list of integers representing the tokenized string.
         """
-        if not isinstance(input_string, str):
-            logger.error(f"unstable_tokenize: input_string must be a string, got {type(input_string)}")
-            raise ValueError("Input string must be a string.")
+        _assert(
+            isinstance(input_string, str),
+            f"unstable_tokenize: input_string must be a string, got {type(input_string)}",
+            logger,
+        )
         return self._port.call_rpc(
             "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
         )

@@ -7,7 +7,7 @@ class LLMPredictionStopReason(str, Enum):
     Represents the reason why a prediction stopped. Only the following values are possible:
 
     - `userStopped`: The user stopped the prediction. This includes calling the `cancel` method on
-      the `OngoingPrediction` object.
+      the `SyncOngoingPrediction` object.
     - `modelUnloaded`: The model was unloaded during the prediction.
     - `failed`: An error occurred during the prediction.
     - `eosFound`: The model predicted an end-of-sequence token, which is a way for the model to
@@ -43,7 +43,7 @@ class LLMPredictionStats(TypedDict):
     This is a string enum with the following possible values:
 
     - `userStopped`: The user stopped the prediction. This includes calling the `cancel` method on
-      the `OngoingPrediction` object.
+      the `SyncOngoingPrediction` object.
     - `modelUnloaded`: The model was unloaded during the prediction.
     - `failed`: An error occurred during the prediction.
     - `eosFound`: The model predicted an end-of-sequence token, which is a way for the model to

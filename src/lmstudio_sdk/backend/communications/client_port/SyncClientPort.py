@@ -1,16 +1,16 @@
 import json
 import threading
 import websocket
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .BaseClientPort import BaseClientPort
-from ...utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
+from ....utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
 
 
 logger = get_logger(__name__)
 
 
-class ClientPort(BaseClientPort):
+class SyncClientPort(BaseClientPort):
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self._lock = threading.Lock()
@@ -20,17 +20,18 @@ class ClientPort(BaseClientPort):
         data = json.loads(message)
         logger.recv(f"Message received on sync port {self.endpoint}:\n{pretty_print(data)}")
 
-        # TODO: more robust data handling
         data_type = data.get("type", None)
         if data_type is None:
             return
 
         # channel endpoints
-        # TODO: error handling
         if data_type == "channelSend":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
-                self.channel_handlers[channel_id](data.get("message", {}))
+                message_content = data.get("message", data)
+                if message_content.get("type", None) == "log":
+                    message_content = message_content.get("log")
+                self.channel_handlers[channel_id](message_content)
         elif data_type == "channelClose":
             channel_id = data.get("channelId")
             if channel_id in self.channel_handlers:
@@ -44,14 +45,12 @@ class ClientPort(BaseClientPort):
         # RPC endpoints
         elif data_type == "rpcResult" or data_type == "rpcError":
             call_id = data.get("callId", -1)
-            # TODO we should pass only the error dict
             if call_id in self.rpc_handlers:
                 self.rpc_handlers[call_id](data)
                 del self.rpc_handlers[call_id]
 
     def on_error(self, ws, error):
-        # TODO I'm pretty sure this is a WebSocket error not a message error
-        pass
+        logger.error(f"Error in WebSocket connection to {self.uri}: {error}")
 
     def on_close(self, ws, close_status_code, close_msg):
         self._connection_event.clear()
@@ -91,7 +90,9 @@ class ClientPort(BaseClientPort):
         logger.websocket(f"Connected to WebSocket at {self.uri}.")
         return True
 
-    def _send_payload(self, payload: dict, extra: dict | None = None, callback: Callable[[dict], Any] | None = None):
+    def _send_payload(
+        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
+    ):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
                 logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
@@ -99,8 +100,8 @@ class ClientPort(BaseClientPort):
             else:
                 logger.error("Attempted to send payload, but WebSocket connection is not established.")
                 raise ValueError("WebSocket connection is not established.")
-            if callback:
-                return callback(extra)
+            if postprocess:
+                return postprocess(extra)
             return extra
 
     def close(self) -> None:
@@ -116,17 +117,16 @@ class ClientPort(BaseClientPort):
     def _rpc_complete_event(self):
         return threading.Event()
 
-    def promise_event(self):
+    def _promise_event(self):
         return PseudoFuture()
 
-    # TODO type hint for return type
     def _call_rpc(
         self,
         payload: dict,
         complete: threading.Event,
         result: dict,
-        callback: Callable[[dict], Any],
-        extra: dict | None = None,
+        postprocess: Callable[[dict], Any],
+        extra: Optional[dict] = None,
     ):
         assert self._websocket is not None
         self._send_payload(payload)
@@ -150,7 +150,4 @@ class ClientPort(BaseClientPort):
                 return x.get("result", x)
             return x
 
-        return process_result(callback(result))
-
-
-# TODO LLMPort, EmbeddingPort, SystemPort, DiagnosticsPort
+        return process_result(postprocess(result))
