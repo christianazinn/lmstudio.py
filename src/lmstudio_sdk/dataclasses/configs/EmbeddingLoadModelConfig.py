@@ -1,8 +1,10 @@
 from typing import NotRequired, TypedDict
+
 from .LLMLoadModelConfig import LLMLlamaAccelerationSetting
 
 
 class EmbeddingLoadModelConfig(TypedDict):
+    # TODO: docstring
     """
     Configuration for loading an embedding model.
     """

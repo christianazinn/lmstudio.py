@@ -1,13 +1,15 @@
-from enum import Enum
+import enum
 from typing import Any, List, TypedDict
 
 
 class KVConfigField(TypedDict):
+    """Represents a key-value configuration field."""
     key: str
     value: Any
 
 
 class KVConfig(TypedDict):
+    """Represents a key-value configuration object."""
     fields: List[KVConfigField]
 
 
@@ -28,7 +30,8 @@ def find_key_in_kv_config(kv_config: KVConfig, key: str) -> Any:
     return None
 
 
-class KVConfigLayerName(str, Enum):
+class KVConfigLayerName(str, enum.Enum):
+    # TODO docstrings
     # Config that is currently loaded by the model
     CURRENTLY_LOADED = "currentlyLoaded"
 
@@ -61,9 +64,11 @@ class KVConfigLayerName(str, Enum):
 
 
 class KVConfigStackLayer(TypedDict):
+    """Represents a layer in a KVConfigStack."""
     layerName: KVConfigLayerName
     config: KVConfig
 
 
 class KVConfigStack(TypedDict):
+    """Represents a stack of KVConfigLayers."""
     layers: List[KVConfigStackLayer]

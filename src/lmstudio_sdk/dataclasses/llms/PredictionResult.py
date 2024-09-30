@@ -1,15 +1,18 @@
 from typing import TypedDict
-from ..models import ModelDescriptor
+
+import lmstudio_sdk.dataclasses.models as models
+
 from .KVConfig import KVConfig
 from .LLMPredictionStats import LLMPredictionStats
 
 
 class PredictionResult(TypedDict):
-    """
-    Represents the result of a prediction.
+    """Represents the result of a prediction.
 
-    The most notable property is `content`, which contains the generated text.
-    Additionally, the `stats` property contains statistics about the prediction.
+    The most notable property is `content`,
+    which contains the generated text.
+    Additionally, the `stats` property
+    contains statistics about the prediction.
     """
 
     content: str
@@ -18,7 +21,7 @@ class PredictionResult(TypedDict):
     stats: LLMPredictionStats
     """Statistics about the prediction."""
 
-    model_info: ModelDescriptor
+    model_info: models.ModelDescriptor
     """Information about the model used for the prediction."""
 
     load_config: KVConfig

@@ -1,8 +1,9 @@
-from enum import Enum
+import enum
 from typing import NotRequired, TypedDict
 
 
-class LLMPredictionStopReason(str, Enum):
+class LLMPredictionStopReason(str, enum.Enum):
+    # TODO docstrings
     """
     Represents the reason why a prediction stopped. Only the following values are possible:
 
@@ -32,6 +33,7 @@ class LLMPredictionStopReason(str, Enum):
 
 
 class LLMPredictionStats(TypedDict):
+    # TODO docstrings
     """
     @public
     """

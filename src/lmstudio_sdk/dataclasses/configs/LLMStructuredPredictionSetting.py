@@ -5,7 +5,7 @@ LLMStructuredPredictionSetting = Union[
     Dict[Literal["type"], Literal["none"]],
     Dict[Literal["type", "jsonSchema"], Union[Literal["json"], Any]],
 ]
-
+# TODO: docstring
 """
 Settings for structured prediction. Structured prediction is a way to force the model to generate
 predictions that conform to a specific structure.

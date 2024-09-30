@@ -2,6 +2,7 @@ from typing import List, Literal, NotRequired, TypedDict, Union
 
 
 LLMLlamaAccelerationOffloadRatio = Union[float, Literal["max", "off"]]
+# TODO: docstring
 """
 How much of the model's work should be offloaded to the GPU. The value should be between 0 and 1.
 A value of 0 means that no layers are offloaded to the GPU, while a value of 1 means that all
@@ -15,6 +16,7 @@ This type can be:
 
 
 class LLMLlamaAccelerationSetting(TypedDict):
+    # TODO: docstring
     """
     Settings related to offloading work to the GPU.
     """
@@ -36,6 +38,7 @@ class LLMLlamaAccelerationSetting(TypedDict):
 
 
 class LLMLoadModelConfig(TypedDict):
+    # TODO: docstring
     """
     Configuration for loading an LLM model.
     """
