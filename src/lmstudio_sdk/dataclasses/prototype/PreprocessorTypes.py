@@ -12,7 +12,14 @@ class ProcessorInputFile(TypedDict):
     size_bytes: int
 
 
-ProcessorInputFileType = Literal["image", "text/plain", "text/other", "application/pdf", "application/word", "unknown"]
+ProcessorInputFileType = Literal[
+    "image",
+    "text/plain",
+    "text/other",
+    "application/pdf",
+    "application/word",
+    "unknown",
+]
 
 
 ProcessorInputMessageRole = Literal["system", "user", "assistant"]
@@ -39,7 +46,9 @@ class PromptPreprocessor(ABC):
         pass
 
     @abstractmethod
-    def preprocess(self, ctl: PromptPreprocessController) -> Union[str, ProcessorInputMessage]:
+    def preprocess(
+        self, ctl: PromptPreprocessController
+    ) -> Union[str, ProcessorInputMessage]:
         pass
 
 

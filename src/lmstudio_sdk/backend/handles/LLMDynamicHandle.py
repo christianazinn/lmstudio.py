@@ -1,37 +1,13 @@
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Coroutine, List, Optional, Tuple
 
-from ...dataclasses import (
-    convert_dict_to_kv_config,
-    find_key_in_kv_config,
-    KVConfig,
-    KVConfigLayerName,
-    KVConfigStack,
-    KVConfigStackLayer,
-    LLMApplyPromptTemplateOpts,
-    LLMCompletionContextInput,
-    LLMContext,
-    LLMConversationContextInput,
-    LLMPredictionConfig,
-    LLMPredictionExtraOpts,
-    LLMPredictionOpts,
-    LLMPredictionStats,
-    ModelDescriptor,
-    ModelSpecifier,
-)
-from ...utils import (
-    _assert,
-    BaseBufferedEvent,
-    ChannelError,
-    get_logger,
-    LiteralOrCoroutine,
-    number_to_checkbox_numeric,
-    pretty_print_error,
-)
-from ..communications import BaseOngoingPrediction
+import lmstudio_sdk.dataclasses as dc
+import lmstudio_sdk.utils as utils
+import lmstudio_sdk.backend.communications as comms
+
 from .DynamicHandle import DynamicHandle
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 def predict_internal_process_result(extra):
@@ -46,6 +22,7 @@ def predict_internal_process_result(extra):
 
 
 class LLMDynamicHandle(DynamicHandle):
+    # TODO: docstrings
     """
     This represents a set of requirements for a model. It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
@@ -58,9 +35,11 @@ class LLMDynamicHandle(DynamicHandle):
     :public:
     """
 
-    _internal_kv_config_stack = KVConfigStack(layers=[])
+    _internal_kv_config_stack = dc.KVConfigStack(layers=[])
 
-    def __prediction_config_to_kv_config(self, prediction_config: Optional[LLMPredictionConfig]) -> KVConfig:
+    def __prediction_config_to_kv_config(
+        self, prediction_config: Optional[dc.LLMPredictionConfig]
+    ) -> dc.KVConfig:
         fields = []
         if prediction_config is not None:
             for default_key in [
@@ -71,73 +50,120 @@ class LLMDynamicHandle(DynamicHandle):
                 "top_k_sampling",
             ]:
                 if default_key in prediction_config:
-                    fields.append({"key": default_key, "value": prediction_config[default_key]})
+                    fields.append(
+                        {
+                            "key": default_key,
+                            "value": prediction_config[default_key],
+                        }
+                    )
             if "max_predicted_tokens" in prediction_config:
                 fields.append(
                     {
                         "key": "max_predicted_tokens",
-                        "value": number_to_checkbox_numeric(prediction_config["max_predicted_tokens"], -1, 1),
+                        "value": utils.number_to_checkbox_numeric(
+                            prediction_config["max_predicted_tokens"], -1, 1
+                        ),
                     }
                 )
             if "repeat_penalty" in prediction_config:
                 fields.append(
                     {
                         "key": "repeat_penalty",
-                        "value": number_to_checkbox_numeric(prediction_config["repeat_penalty"], 1, 1),
+                        "value": utils.number_to_checkbox_numeric(
+                            prediction_config["repeat_penalty"], 1, 1
+                        ),
                     }
                 )
             if "min_p_sampling" in prediction_config:
                 fields.append(
                     {
                         "key": "min_p_sampling",
-                        "value": number_to_checkbox_numeric(prediction_config["min_p_sampling"], 0, 0.05),
+                        "value": utils.number_to_checkbox_numeric(
+                            prediction_config["min_p_sampling"], 0, 0.05
+                        ),
                     }
                 )
             if "top_p_sampling" in prediction_config:
                 fields.append(
                     {
                         "key": "top_p_sampling",
-                        "value": number_to_checkbox_numeric(prediction_config["top_p_sampling"], 1, 0.95),
+                        "value": utils.number_to_checkbox_numeric(
+                            prediction_config["top_p_sampling"], 1, 0.95
+                        ),
                     }
                 )
             if "cpu_threads" in prediction_config:
-                fields.append({"key": "llama.cpu_threads", "value": prediction_config["cpu_threads"]})
+                fields.append(
+                    {
+                        "key": "llama.cpu_threads",
+                        "value": prediction_config["cpu_threads"],
+                    }
+                )
         return {"fields": fields}
 
-    def __split_opts(self, opts: Optional[LLMPredictionOpts]) -> Tuple[LLMPredictionConfig, LLMPredictionExtraOpts]:
+    def __split_opts(
+        self, opts: Optional[dc.LLMPredictionOpts]
+    ) -> Tuple[dc.LLMPredictionConfig, dc.LLMPredictionExtraOpts]:
         if opts is None:
             return {}, {}
-        extra_opts: LLMPredictionExtraOpts = {}
+        extra_opts: dc.LLMPredictionExtraOpts = {}
         for key in ["on_prompt_processing_progress", "on_first_token"]:
             if key in opts:
                 extra_opts[key] = opts[key]
                 del opts[key]
         return opts, extra_opts
 
-    def __resolve_completion_context(self, contextInput: LLMCompletionContextInput) -> LLMContext:
-        return {"history": [{"role": "user", "content": [{"type": "text", "text": contextInput}]}]}
-
-    def __resolve_conversation_context(self, context_input: LLMConversationContextInput) -> LLMContext:
+    def __resolve_completion_context(
+        self, contextInput: dc.LLMCompletionContextInput
+    ) -> dc.LLMContext:
         return {
             "history": [
-                {"role": item.get("role", "user"), "content": [{"type": "text", "text": item.get("content", "")}]}
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": contextInput}],
+                }
+            ]
+        }
+
+    def __resolve_conversation_context(
+        self, context_input: dc.LLMConversationContextInput
+    ) -> dc.LLMContext:
+        return {
+            "history": [
+                {
+                    "role": item.get("role", "user"),
+                    "content": [
+                        {"type": "text", "text": item.get("content", "")}
+                    ],
+                }
                 for item in context_input
             ]
         }
 
     def __predict_internal(
         self,
-        model_specifier: ModelSpecifier,
-        context: LLMContext,
-        prediction_config_stack: KVConfigStack,
-        cancel_event: BaseBufferedEvent,
-        extra_opts: LLMPredictionExtraOpts,
+        model_specifier: dc.ModelSpecifier,
+        context: dc.LLMContext,
+        prediction_config_stack: dc.KVConfigStack,
+        cancel_event: utils.SyncBufferedEvent | utils.AsyncBufferedEvent,
+        extra_opts: dc.LLMPredictionExtraOpts,
         on_fragment: Callable[[str], None],
-        on_finished: Callable[[LLMPredictionStats, ModelDescriptor, KVConfig, KVConfig], None],
+        on_finished: Callable[
+            [
+                dc.LLMPredictionStats,
+                dc.ModelDescriptor,
+                dc.KVConfig,
+                dc.KVConfig,
+            ],
+            None,
+        ],
         on_error: Callable[[Exception], None],
         postprocess: Callable[[dict], Any],
         extra: Optional[dict] = None,
-    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         finished = self._port._rpc_complete_event()
         is_first_token = True
 
@@ -154,11 +180,18 @@ class LLMDynamicHandle(DynamicHandle):
                         if on_first_token is not None:
                             on_first_token()
             elif message_type == "promptProcessingProgress":
-                logger.debug(f"Processing prompt, progress: {message.get('progress', 0.0)}")
+                logger.debug(
+                    "Processing prompt, progress: %f",
+                    message.get("progress", 0.0),
+                )
                 if "on_prompt_processing_progress" in extra_opts:
-                    on_prompt_processing_progress = extra_opts.get("on_prompt_processing_progress")
+                    on_prompt_processing_progress = extra_opts.get(
+                        "on_prompt_processing_progress"
+                    )
                     if on_prompt_processing_progress is not None:
-                        on_prompt_processing_progress(message.get("progress", 0.0))
+                        on_prompt_processing_progress(
+                            message.get("progress", 0.0)
+                        )
             elif message_type == "success":
                 nonlocal finished
                 finished.set()
@@ -170,18 +203,27 @@ class LLMDynamicHandle(DynamicHandle):
                     message.get("predictionConfig", {}),
                 )
             elif message_type == "channelError":
-                logger.error(f"Prediction failed: {pretty_print_error(message.get('error'))}")
-                on_error(ChannelError(message.get("error").get("title")))
+                logger.error(
+                    "Prediction failed: %s",
+                    utils.pretty_print_error(message.get("error")),
+                )
+                on_error(utils.ChannelError(message.get("error").get("title")))
 
         def cancel_send(channel_id):
-            logger.info(f"Attempting to send cancel message to channel {channel_id}.")
+            logger.info(
+                "Attempting to send cancel message to channel %d.", channel_id
+            )
             if not finished.is_set():
-                return self._port.send_channel_message(channel_id, {"type": "cancel"})
+                return self._port.send_channel_message(
+                    channel_id, {"type": "cancel"}
+                )
             # HACK easier to just eat a debug message
             return self._port.send_channel_message(None, None)
 
         extra = extra or {}
-        extra.update({"cancel_event": cancel_event, "cancel_send": cancel_send})
+        extra.update(
+            {"cancel_event": cancel_event, "cancel_send": cancel_send}
+        )
 
         return self._port.create_channel(
             "predict",
@@ -196,8 +238,13 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def complete(
-        self, prompt: LLMCompletionContextInput, opts: Optional[LLMPredictionOpts]
-    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
+        self,
+        prompt: dc.LLMCompletionContextInput,
+        opts: Optional[dc.LLMPredictionOpts],
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         """
         Use the loaded model to predict text.
 
@@ -243,30 +290,39 @@ class LLMDynamicHandle(DynamicHandle):
         :param prompt: The prompt to use for prediction.
         :param opts: Options for the prediction.
         """
-        _assert(isinstance(prompt, str), f"complete: prompt must be a string, got {type(prompt)}", logger)
+        utils._assert(
+            isinstance(prompt, str),
+            "complete: prompt must be a string, got %s",
+            type(prompt),
+            logger,
+        )
 
         config, extra_opts = self.__split_opts(opts)
 
         if self._port.is_async():
-            from ..communications import AsyncOngoingPrediction as OngoingPrediction
-            from ...utils import AsyncBufferedEvent as BufferedEvent
+            OngoingPrediction = comms.AsyncOngoingPrediction
+            BufferedEvent = utils.AsyncBufferedEvent
         else:
-            from ..communications import SyncOngoingPrediction as OngoingPrediction
-            from ...utils import SyncBufferedEvent as BufferedEvent
+            OngoingPrediction = comms.SyncOngoingPrediction
+            BufferedEvent = utils.SyncBufferedEvent
+
         cancel_event, emit_cancel_event = BufferedEvent.create()
-        ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
+        ongoing_prediction, finished, failed, push = OngoingPrediction.create(
+            emit_cancel_event
+        )
 
         config["stop_strings"] = []
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            KVConfigStackLayer(
-                layerName=KVConfigLayerName.API_OVERRIDE, config=self.__prediction_config_to_kv_config(config)
+            dc.KVConfigStackLayer(
+                layerName=dc.KVConfigLayerName.API_OVERRIDE,
+                config=self.__prediction_config_to_kv_config(config),
             )
         )
         prediction_layers.append(
             {
-                "layerName": KVConfigLayerName.COMPLETE_MODE_FORMATTING,
-                "config": convert_dict_to_kv_config(
+                "layerName": dc.KVConfigLayerName.COMPLETE_MODE_FORMATTING,
+                "config": dc.convert_dict_to_kv_config(
                     {
                         "promptTemplate": {
                             "type": "jinja",
@@ -289,7 +345,10 @@ class LLMDynamicHandle(DynamicHandle):
             cancel_event,
             extra_opts,
             lambda fragment: push(fragment),
-            lambda stats, model_info, load_model_config, prediction_config: finished(
+            lambda stats,
+            model_info,
+            load_model_config,
+            prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
             lambda error: failed(error),
@@ -298,8 +357,13 @@ class LLMDynamicHandle(DynamicHandle):
         )
 
     def respond(
-        self, history: LLMConversationContextInput, opts: Optional[LLMPredictionOpts] = None
-    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
+        self,
+        history: dc.LLMConversationContextInput,
+        opts: Optional[dc.LLMPredictionOpts] = None,
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         """
         Use the loaded model to generate a response based on the given history.
 
@@ -352,28 +416,40 @@ class LLMDynamicHandle(DynamicHandle):
         try:
             resolved_context = self.__resolve_conversation_context(history)
         except Exception as e:
-            logger.error(f"Failed to resolve conversation context: {e}")
-            raise ValueError("History must be a list conforming to LLMConversationContextInput, got something else.")
+            logger.error("Failed to resolve conversation context: %s", str(e))
+            raise ValueError(
+                "History must be a list conforming to \
+                LLMConversationContextInput, got something else."
+            )
         return self.predict(resolved_context, opts)
 
     def predict(
-        self, context: LLMContext, opts: Optional[LLMPredictionOpts] = None
-    ) -> LiteralOrCoroutine[BaseOngoingPrediction]:
+        self,
+        context: dc.LLMContext,
+        opts: Optional[dc.LLMPredictionOpts] = None,
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         config, extra_opts = self.__split_opts(opts)
 
         if self._port.is_async():
-            from ..communications import AsyncOngoingPrediction as OngoingPrediction
-            from ...utils import AsyncBufferedEvent as BufferedEvent
+            OngoingPrediction = comms.AsyncOngoingPrediction
+            BufferedEvent = utils.AsyncBufferedEvent
         else:
-            from ..communications import SyncOngoingPrediction as OngoingPrediction
-            from ...utils import SyncBufferedEvent as BufferedEvent
+            OngoingPrediction = comms.SyncOngoingPrediction
+            BufferedEvent = utils.SyncBufferedEvent
+
         cancel_event, emit_cancel_event = BufferedEvent.create()
-        ongoing_prediction, finished, failed, push = OngoingPrediction.create(emit_cancel_event)
+        ongoing_prediction, finished, failed, push = OngoingPrediction.create(
+            emit_cancel_event
+        )
 
         prediction_layers = self._internal_kv_config_stack.get("layers", [])
         prediction_layers.append(
-            KVConfigStackLayer(
-                layerName=KVConfigLayerName.API_OVERRIDE, config=self.__prediction_config_to_kv_config(config)
+            dc.KVConfigStackLayer(
+                layerName=dc.KVConfigLayerName.API_OVERRIDE,
+                config=self.__prediction_config_to_kv_config(config),
             )
         )
 
@@ -384,7 +460,10 @@ class LLMDynamicHandle(DynamicHandle):
             cancel_event,
             extra_opts,
             lambda fragment: push(fragment),
-            lambda stats, model_info, load_model_config, prediction_config: finished(
+            lambda stats,
+            model_info,
+            load_model_config,
+            prediction_config: finished(
                 stats, model_info, load_model_config, prediction_config
             ),
             lambda error: failed(error),
@@ -392,12 +471,19 @@ class LLMDynamicHandle(DynamicHandle):
             extra={"ongoing_prediction": ongoing_prediction},
         )
 
-    def unstable_get_context_length(self) -> LiteralOrCoroutine[int]:
-        return self.get_load_config(postprocess=lambda x: find_key_in_kv_config(x, "llm.load.contextLength") or -1)
+    def unstable_get_context_length(self) -> utils.LiteralOrCoroutine[int]:
+        return self.get_load_config(
+            postprocess=lambda x: dc.find_key_in_kv_config(
+                x, "llm.load.contextLength"
+            )
+            or -1
+        )
 
     def unstable_apply_prompt_template(
-        self, context: LLMContext, opts: Optional[LLMApplyPromptTemplateOpts] = None
-    ) -> LiteralOrCoroutine[str]:
+        self,
+        context: dc.LLMContext,
+        opts: Optional[dc.LLMApplyPromptTemplateOpts] = None,
+    ) -> utils.LiteralOrCoroutine[str]:
         return self._port.call_rpc(
             "applyPromptTemplate",
             {
@@ -409,20 +495,28 @@ class LLMDynamicHandle(DynamicHandle):
             lambda x: x.get("formatted", ""),
         )
 
-    def unstable_tokenize(self, input_string: str) -> LiteralOrCoroutine[List[int]]:
-        _assert(
+    def unstable_tokenize(
+        self, input_string: str
+    ) -> utils.LiteralOrCoroutine[List[int]]:
+        utils._assert(
             isinstance(input_string, str),
-            f"unstable_tokenize: input_string must be a string, got {type(input_string)}",
+            "unstable_tokenize: input_string must be a string, got %s",
+            type(input_string),
             logger,
         )
         return self._port.call_rpc(
-            "tokenize", {"specifier": self._specifier, "inputString": input_string}, lambda x: x.get("tokens", [-1])
+            "tokenize",
+            {"specifier": self._specifier, "inputString": input_string},
+            lambda x: x.get("tokens", [-1]),
         )
 
-    def unstable_count_tokens(self, input_string: str) -> LiteralOrCoroutine[int]:
-        _assert(
+    def unstable_count_tokens(
+        self, input_string: str
+    ) -> utils.LiteralOrCoroutine[int]:
+        utils._assert(
             isinstance(input_string, str),
-            f"unstable_count_tokens: input_string must be a string, got {type(input_string)}",
+            "unstable_count_tokens: input_string must be a string, got %s",
+            type(input_string),
             logger,
         )
         return self._port.call_rpc(

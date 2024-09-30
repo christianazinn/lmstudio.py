@@ -2,20 +2,18 @@ from typing import TypedDict
 
 
 class ModelDescriptor(TypedDict):
-    """
-    Describes a specific loaded LLM.
-    """
+    """Describes a specific loaded LLM."""
 
     identifier: str
     """
-    The identifier of the model (Set when loading the model. Defaults to the same as the path.)
+    The identifier of the model.
 
+    Set when loading the model. Defaults to the same as the path.
     Identifier identifies a currently loaded model.
     """
 
     path: str
-    """
-    The path of the model. (i.e. which model is this)
+    """The path of the model.
 
-    An path is associated with a specific model that can be loaded.
+    A path is associated with a specific model that can be loaded.
     """

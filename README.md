@@ -91,9 +91,8 @@ Pick whichever backend best suits your use case. Incidentally, the asynchronous 
 
 We provide internal logging for your debugging pleasure(?). Import the `lmstudio.py` logger using `from lmstudio_sdk import logger`, then `logger.setLevel` to one of the default `logging` levels, or one of the following (which can be imported from `lmstudio_sdk` as well):
 
-- `WRAPPER = 5`: maximum logging, tries to follow stack traces through the sync/async wrappers.
-- `RECV = 7`: debugs all packets sent _and received_ to/from the LM Studio server.
-- `SEND = 8`: debugs all packets sent to the LM Studio server.
+- `RECV = 5`: debugs all packets sent _and received_ to/from the LM Studio server.
+- `SEND = 7`: debugs all packets sent to the LM Studio server.
 - `WEBSOCKET = 9`: debugs WebSocket connection events.
 
 As usual, each level logs all levels above it. Depending on the backend, you can also use the `websocket-client` (sync) or `websockets` (async) loggers for more granular communications logging.

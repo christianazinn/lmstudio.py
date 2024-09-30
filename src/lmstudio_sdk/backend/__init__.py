@@ -1,21 +1,27 @@
+# TODO: docstring
+
 from .client import AsyncLMStudioClient, LMStudioClient, SyncLMStudioClient
 from .communications import (
-    AsyncClientPort,
     AsyncOngoingPrediction,
-    BaseClientPort,
-    BaseOngoingPrediction,
-    SyncClientPort,
     SyncOngoingPrediction,
 )
-from .handles import DynamicHandle, EmbeddingDynamicHandle, EmbeddingSpecificModel, LLMDynamicHandle, LLMSpecificModel
-from .namespaces import DiagnosticsNamespace, EmbeddingNamespace, LLMNamespace, ModelNamespace
+from .handles import (
+    DynamicHandle,
+    EmbeddingDynamicHandle,
+    EmbeddingSpecificModel,
+    LLMDynamicHandle,
+    LLMSpecificModel,
+)
+from .namespaces import (
+    DiagnosticsNamespace,
+    EmbeddingNamespace,
+    LLMNamespace,
+    ModelNamespace,
+)
 
 __all__ = [
-    "AsyncClientPort",
     "AsyncLMStudioClient",
     "AsyncOngoingPrediction",
-    "BaseClientPort",
-    "BaseOngoingPrediction",
     "DiagnosticsNamespace",
     "DynamicHandle",
     "EmbeddingDynamicHandle",
@@ -26,7 +32,6 @@ __all__ = [
     "LLMSpecificModel",
     "LMStudioClient",
     "ModelNamespace",
-    "SyncClientPort",
     "SyncOngoingPrediction",
     "SyncLMStudioClient",
 ]

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, List, Optional, TypeVar
 
-from ....dataclasses import PredictionResult
+import lmstudio_sdk.dataclasses as dc
 
 TFragment = TypeVar("TFragment")
 TFinal = TypeVar("TFinal")
@@ -13,7 +13,7 @@ class BaseStreamableIterator(Generic[TFragment, TFinal], ABC):
         self.buffer: List[TFragment] = []
 
     @abstractmethod
-    def collect(self, fragments: List[str]) -> PredictionResult:
+    def collect(self, fragments: List[str]) -> dc.PredictionResult:
         pass
 
     @abstractmethod

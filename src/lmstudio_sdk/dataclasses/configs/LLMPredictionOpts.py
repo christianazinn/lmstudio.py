@@ -1,8 +1,12 @@
 from typing import Callable, List, Literal, NotRequired, TypedDict
+
 from .LLMStructuredPredictionSetting import LLMStructuredPredictionSetting
 
 
-LLMContextOverflowPolicy = Literal["stopAtLimit", "truncateMiddle", "rollingWindow"]
+LLMContextOverflowPolicy = Literal[
+    "stopAtLimit", "truncateMiddle", "rollingWindow"
+]
+# TODO: docstring
 """
 Behavior for when the generated tokens length exceeds the context window size. Only the following values are allowed:
 
@@ -15,6 +19,7 @@ Behavior for when the generated tokens length exceeds the context window size. O
 
 
 class LLMPredictionConfig(TypedDict):
+    # TODO: docstring
     """
     Shared config for running predictions on an LLM.
     """
@@ -68,6 +73,7 @@ class LLMPredictionConfig(TypedDict):
 
 
 class LLMPredictionExtraOpts(TypedDict):
+    # TODO: docstring
     on_prompt_processing_progress: NotRequired[Callable[[float], None]]
     """
     A callback that is called when the model is processing the prompt. The callback is called with
@@ -83,6 +89,7 @@ class LLMPredictionExtraOpts(TypedDict):
 
 
 class LLMPredictionOpts(LLMPredictionConfig, LLMPredictionExtraOpts):
+    # TODO: docstring
     """
     Shared options for any prediction methods (`.complete`/`.respond`).
 

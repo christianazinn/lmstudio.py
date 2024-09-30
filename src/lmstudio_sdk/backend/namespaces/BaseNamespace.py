@@ -1,12 +1,12 @@
 from abc import ABC
 
-from ..communications import BaseClientPort
+import lmstudio_sdk.backend.communications as comms
 
 
 class BaseNamespace(ABC):
-    _port: BaseClientPort
+    _port: comms.BaseClientPort
 
-    def __init__(self, port: BaseClientPort):
+    def __init__(self, port: comms.BaseClientPort):
         self._port = port
 
     def connect(self) -> None:

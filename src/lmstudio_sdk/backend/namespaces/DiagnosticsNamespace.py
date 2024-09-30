@@ -1,10 +1,11 @@
 from typing import Callable, Literal, TypedDict
 
-from ...utils import _assert, get_logger
+import lmstudio_sdk.utils as utils
+
 from .BaseNamespace import BaseNamespace
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class DiagnosticsLogEventData(TypedDict):
@@ -20,7 +21,10 @@ class DiagnosticsLogEvent(TypedDict):
 
 
 class DiagnosticsNamespace(BaseNamespace):
-    def unstable_stream_logs(self, listener: Callable[[DiagnosticsLogEvent], None]) -> Callable[[], None]:
+    # TODO: docstrings
+    def unstable_stream_logs(
+        self, listener: Callable[[DiagnosticsLogEvent], None]
+    ) -> Callable[[], None]:
         """
         Register a callback to receive log events. Return a function to stop receiving log events.
 
@@ -28,20 +32,25 @@ class DiagnosticsNamespace(BaseNamespace):
         :alpha:
         """
 
-        _assert(
+        utils._assert(
             isinstance(listener, Callable),
-            f"unstable_stream_logs: listener must be a callable, got {type(listener)}",
+            "unstable_stream_logs: listener must be a callable, got %s",
+            type(listener),
             logger,
         )
 
         def unsubscribe(channel_id: int) -> None:
             del self._port.channel_handlers[channel_id]
-            return self._port.send_channel_message(channel_id, {"type": "channelClose"})
+            return self._port.send_channel_message(
+                channel_id, {"type": "channelClose"}
+            )
 
         return self._port.create_channel(
             "streamLogs",
             None,
             listener,
-            lambda x: (lambda: x.get("extra").get("unsubscribe")(x.get("channel_id"))),
+            lambda x: (
+                lambda: x.get("extra").get("unsubscribe")(x.get("channel_id"))
+            ),
             extra={"unsubscribe": unsubscribe},
         )

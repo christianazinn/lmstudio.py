@@ -1,7 +1,7 @@
 import asyncio
+import threading
 from abc import ABC, abstractmethod
 from typing import Callable, List
-from threading import Event
 
 
 class BaseAbortSignal(ABC):
@@ -37,6 +37,7 @@ class BaseAbortSignal(ABC):
 
 
 class AsyncAbortSignal(BaseAbortSignal):
+    # TODO docstring
     def __init__(self):
         super().__init__()
         self._event = asyncio.Event()
@@ -56,9 +57,10 @@ class AsyncAbortSignal(BaseAbortSignal):
 
 
 class SyncAbortSignal(BaseAbortSignal):
+    # TODO docstring
     def __init__(self):
         super().__init__()
-        self._event = Event()
+        self._event = threading.Event()
 
     def abort(self) -> None:
         """Aborts the signal."""

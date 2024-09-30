@@ -3,11 +3,12 @@ import threading
 import websocket
 from typing import Any, Callable, Optional
 
+import lmstudio_sdk.utils as utils
+
 from .BaseClientPort import BaseClientPort
-from ....utils import get_logger, pretty_print, pretty_print_error, PseudoFuture, RPCError
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class SyncClientPort(BaseClientPort):
@@ -18,7 +19,11 @@ class SyncClientPort(BaseClientPort):
 
     def on_message(self, ws, message):
         data = json.loads(message)
-        logger.recv(f"Message received on sync port {self.endpoint}:\n{pretty_print(data)}")
+        logger.recv(
+            "Message received on sync port %s:\n%s",
+            self.endpoint,
+            utils.pretty_print(data),
+        )
 
         data_type = data.get("type", None)
         if data_type is None:
@@ -50,13 +55,19 @@ class SyncClientPort(BaseClientPort):
                 del self.rpc_handlers[call_id]
 
     def on_error(self, ws, error):
-        logger.error(f"Error in WebSocket connection to {self.uri}: {error}")
+        logger.error(
+            "Error in WebSocket connection to %s: %s", self.uri, str(error)
+        )
 
     def on_close(self, ws, close_status_code, close_msg):
         self._connection_event.clear()
 
     def on_open(self, ws):
-        logger.websocket(f"Sending authentication packet to {self.uri} as {self.identifier}...")
+        logger.websocket(
+            "Sending authentication packet to %s as %s...",
+            self.uri,
+            self.identifier,
+        )
         # auth handshake
         self._websocket.send(
             json.dumps(
@@ -67,7 +78,7 @@ class SyncClientPort(BaseClientPort):
                 }
             )
         )
-        logger.websocket(f"Sync port {self.endpoint} is authenticated.")
+        logger.websocket("Sync port authenticated: %s.", self.endpoint)
         self._connection_event.set()
 
     def connect(self) -> bool:
@@ -84,21 +95,33 @@ class SyncClientPort(BaseClientPort):
         wst.start()
 
         if not self._connection_event.wait(timeout=5):
-            logger.error(f"Failed to connect to WebSocket server at {self.uri}.")
+            logger.error(
+                "Failed to connect to WebSocket server at %s.", self.uri
+            )
             return False
 
-        logger.websocket(f"Connected to WebSocket at {self.uri}.")
+        logger.websocket("Connected to WebSocket at %s.", self.uri)
         return True
 
     def _send_payload(
-        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
+        self,
+        payload: dict,
+        extra: Optional[dict] = None,
+        postprocess: Optional[Callable[[dict], Any]] = None,
     ):
         with self._lock:
             if self._websocket and self._connection_event.is_set():
-                logger.send(f"Sending payload on sync port {self.endpoint}:\n{pretty_print(payload)}")
+                logger.send(
+                    "Sending payload on sync port %s:\n%s",
+                    self.endpoint,
+                    utils.pretty_print(payload),
+                )
                 self._websocket.send(json.dumps(payload))
             else:
-                logger.error("Attempted to send payload, but WebSocket connection is not established.")
+                logger.error(
+                    "Attempted to send payload, \
+                    but WebSocket connection is not established."
+                )
                 raise ValueError("WebSocket connection is not established.")
             if postprocess:
                 return postprocess(extra)
@@ -107,9 +130,14 @@ class SyncClientPort(BaseClientPort):
     def close(self) -> None:
         with self._lock:
             if self._websocket:
-                logger.websocket(f"Closing WebSocket connection on async port {self.endpoint}.")
+                logger.websocket(
+                    "Closing WebSocket connection on sync port %s.",
+                    self.endpoint,
+                )
                 self._websocket.close()
-                logger.websocket(f"WebSocket connection closed to {self.endpoint}.")
+                logger.websocket(
+                    "WebSocket connection closed to %s.", self.endpoint
+                )
 
     def is_connected(self) -> bool:
         return self._connection_event.is_set()
@@ -118,7 +146,7 @@ class SyncClientPort(BaseClientPort):
         return threading.Event()
 
     def _promise_event(self):
-        return PseudoFuture()
+        return utils.PseudoFuture()
 
     def _call_rpc(
         self,
@@ -131,13 +159,20 @@ class SyncClientPort(BaseClientPort):
         assert self._websocket is not None
         self._send_payload(payload)
         logger.debug(
-            f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
+            "Waiting for RPC call to complete to %s...",
+            payload.get("endpoint", "unknown"),
         )
         complete.wait()
 
         if "error" in result:
-            logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
-            raise RPCError(f"Error in RPC call: {result.get('error').get('title', 'Unknown error')}")
+            logger.error(
+                "Error in RPC call: %s",
+                utils.pretty_print_error(result.get("error")),
+            )
+            raise utils.RPCError(
+                "Error in RPC call: %s",
+                result.get("error").get("title", "Unknown error"),
+            )
 
         result = result.get("result", result)
         if isinstance(result, dict):

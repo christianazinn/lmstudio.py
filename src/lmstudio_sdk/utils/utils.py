@@ -1,18 +1,21 @@
+import base64
 import json
-from base64 import b64encode
-from secrets import token_bytes
+import secrets
 from typing import Any, Coroutine, Dict, Optional, TypeVar, Union
 
 lms_default_ports = [1234]
 
 
 def generate_random_base64(byte_length: int) -> str:
-    random_bytes = token_bytes(byte_length)
-    return b64encode(random_bytes).decode("utf-8")
+    random_bytes = secrets.token_bytes(byte_length)
+    return base64.b64encode(random_bytes).decode("utf-8")
 
 
 def number_to_checkbox_numeric(
-    self, value: Optional[float], unchecked_value: float, value_when_unchecked: float
+    self,
+    value: Optional[float],
+    unchecked_value: float,
+    value_when_unchecked: float,
 ) -> Optional[Dict[str, Union[bool, float]]]:
     if value is None:
         return None
@@ -39,17 +42,19 @@ def pretty_print_error(obj):
         return obj
 
 
-def _assert(condition: bool, message: str, logger):
+def _assert(condition: bool, message: str, info: str, logger):
     if not condition:
-        logger.error(message)
-        raise ValueError(message)
+        logger.error(message, info)
+        raise ValueError(message, info)
 
 
 class RPCError(Exception):
+    """Raised when an RPC call fails."""
     pass
 
 
 class ChannelError(Exception):
+    """Raised when an error occurs in the channel."""
     pass
 
 

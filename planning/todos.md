@@ -3,6 +3,9 @@ TODO: sync code does not respect SIGINT during blocking channel operations like 
 TODO: README + docs
 TODO: preprocessors and generators, full feature parity
 
+TODO: docstrings according to PEP 257
+in particular line length 79 (72 for multiline)
+
 more design questions:
 move from option typeddicts to function kwargs? more "Pythonic"?
 pydantic runtime type checking? I guess the TS lib uses Zod

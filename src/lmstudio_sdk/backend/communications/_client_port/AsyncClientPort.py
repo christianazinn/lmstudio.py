@@ -3,11 +3,12 @@ import json
 import websockets
 from typing import Any, Callable, Optional
 
+import lmstudio_sdk.utils as utils
+
 from .BaseClientPort import BaseClientPort
-from ....utils import get_logger, pretty_print, pretty_print_error, RPCError
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class AsyncClientPort(BaseClientPort):
@@ -17,9 +18,14 @@ class AsyncClientPort(BaseClientPort):
         self.receive_task = None
 
     async def connect(self):
-        logger.websocket(f"Connecting to WebSocket at {self.uri}...")
+        logger.websocket("Connecting to WebSocket at %s...", self.uri)
         self._websocket = await websockets.connect(self.uri)
-        logger.websocket(f"Connected to WebSocket at {self.uri}. Sending authentication packet as {self.identifier}...")
+        logger.websocket(
+            "Connected to WebSocket at %s. \
+            Sending authentication packet as %s...",
+            self.uri,
+            self.identifier,
+        )
         await self._websocket.send(
             json.dumps(
                 {
@@ -30,31 +36,53 @@ class AsyncClientPort(BaseClientPort):
             )
         )
         self.running = True
-        logger.websocket(f"Async port {self.endpoint} is authenticated. Establishing receive task.")
+        logger.websocket(
+            "Async port authenticated: %s. Establishing receive task.",
+            self.endpoint,
+        )
         self.receive_task = asyncio.create_task(self.__receive_messages())
 
     async def close(self):
         self.running = False
         if self._websocket:
-            logger.websocket(f"Closing WebSocket connection on async port {self.endpoint}...")
+            logger.websocket(
+                "Closing WebSocket connection on async port %s...",
+                self.endpoint,
+            )
             await self._websocket.close()
-            logger.websocket(f"WebSocket connection closed to {self.endpoint}.")
+            logger.websocket(
+                "WebSocket connection closed to %s.", self.endpoint
+            )
         if self.receive_task:
             try:
-                logger.websocket(f"Waiting for receive task to time out on async port {self.endpoint}...")
+                logger.websocket(
+                    "Waiting for receive task to time out on async port %s...",
+                    self.endpoint,
+                )
                 await asyncio.wait_for(self.receive_task, timeout=5.0)
-                logger.websocket(f"Receive task timed out on async port {self.endpoint}.")
+                logger.websocket(
+                    "Receive task timed out on async port %s.", self.endpoint
+                )
             except asyncio.TimeoutError:
-                logger.error(f"Receive task did not complete in time on async port {self.endpoint}!")
+                logger.error(
+                    "Receive task did not complete in time on async port %s!",
+                    self.endpoint,
+                )
 
     async def __receive_messages(self):
         try:
             while self.running:
                 assert self._websocket is not None
-                logger.recv(f"Waiting for message on async port {self.endpoint}.")
+                logger.recv(
+                    "Waiting for message on async port %s.", self.endpoint
+                )
                 message = await self._websocket.recv()
                 data = json.loads(message)
-                logger.recv(f"Message received on async port {self.endpoint}:\n{pretty_print(data)}")
+                logger.recv(
+                    "Message received on async port %s:\n%s",
+                    self.endpoint,
+                    utils.pretty_print(data),
+                )
 
                 data_type = data.get("type", None)
                 if data_type is None:
@@ -86,22 +114,37 @@ class AsyncClientPort(BaseClientPort):
                         del self.rpc_handlers[call_id]
         except AssertionError:
             logger.error(
-                f"WebSocket connection to {self.uri} not established in receive_messages: this should never happen?"
+                "WebSocket connection not established in \
+                receive_messages to %s: this should never happen?",
+                self.uri,
             )
         except websockets.ConnectionClosedOK:
-            logger.websocket(f"WebSocket connection to {self.uri} closed normally.")
+            logger.websocket(
+                "WebSocket connection to closed normally to %s.", self.uri
+            )
         except websockets.ConnectionClosedError as e:
-            logger.error(f"WebSocket connection closed with error: {e}")
+            logger.error("WebSocket connection closed with error: %s", str(e))
         finally:
             self.running = False
 
     async def _send_payload(
-        self, payload: dict, extra: Optional[dict] = None, postprocess: Optional[Callable[[dict], Any]] = None
+        self,
+        payload: dict,
+        extra: Optional[dict] = None,
+        postprocess: Optional[Callable[[dict], Any]] = None,
     ):
         if not self._websocket:
-            logger.error("Attempted to send payload, but WebSocket connection is not established.")
+            logger.error(
+                "Attempted to send payload, \
+                but WebSocket connection is not established to %s.",
+                self.uri,
+            )
             raise ValueError("WebSocket connection not established.")
-        logger.send(f"Sending payload on async port {self.endpoint}:\n{pretty_print(payload)}")
+        logger.send(
+            "Sending payload on async port %s:\n%s",
+            self.endpoint,
+            utils.pretty_print(payload),
+        )
         await self._websocket.send(json.dumps(payload))
         if postprocess:
             return postprocess(extra)
@@ -123,13 +166,20 @@ class AsyncClientPort(BaseClientPort):
     ):
         await self._send_payload(payload)
         logger.debug(
-            f"Waiting for RPC call to {payload.get('endpoint', 'unknown - enable WRAPPER level logging')} to complete..."
+            "Waiting for RPC call to complete to %s...",
+            payload.get("endpoint", "unknown"),
         )
         await complete.wait()
 
         if "error" in result:
-            logger.error(f"Error in RPC call: {pretty_print_error(result.get('error'))}")
-            raise RPCError(f"Error in RPC call: {result.get('error').get('title', 'Unknown error')}")
+            logger.error(
+                "Error in RPC call: %s",
+                utils.pretty_print_error(result.get("error")),
+            )
+            raise utils.RPCError(
+                "Error in RPC call: %s",
+                result.get("error").get("title", "Unknown error"),
+            )
 
         result = result.get("result", result)
         if isinstance(result, dict):
