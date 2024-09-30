@@ -3,8 +3,10 @@ TODO: sync code does not respect SIGINT during blocking channel operations like 
 TODO: README + docs
 TODO: preprocessors and generators, full feature parity
 
-TODO: stylize according to Google style guide
+TODO: stylize according to Google style guide/PEP 8
 https://google.github.io/styleguide/pyguide.htm
+TODO: docstrings according to PEP 257
+in particular module level imports, line length 79 (72 for multiline), no fstring logger calls
 
 more design questions:
 move from option typeddicts to function kwargs? more "Pythonic"?

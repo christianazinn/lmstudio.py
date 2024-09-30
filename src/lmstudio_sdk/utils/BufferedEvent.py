@@ -16,8 +16,8 @@ class BaseBufferedEvent(ABC):
     def emit(self):
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def create() -> tuple["BaseBufferedEvent", Callable[[], None]]:
         pass
 

@@ -12,7 +12,8 @@ def LMStudioClient(
 ) -> SyncLMStudioClient | Coroutine[Any, Any, AsyncLMStudioClient]:
     """Constructs an instance of either `AsyncLMStudioClient` or `SyncLMStudioClient`.
 
-    Just `await` for async!
+    `await LMStudioClient()` will return an instance of `AsyncLMStudioClient`.
+    `LMStudioClient()` will return an instance of `SyncLMStudioClient`.
     """
     is_async = (
         inspect.currentframe().f_back.f_code.co_flags & inspect.CO_COROUTINE

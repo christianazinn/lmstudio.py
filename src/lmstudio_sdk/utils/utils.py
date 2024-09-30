@@ -39,10 +39,10 @@ def pretty_print_error(obj):
         return obj
 
 
-def _assert(condition: bool, message: str, logger):
+def _assert(condition: bool, message: str, info: str, logger):
     if not condition:
-        logger.error(message)
-        raise ValueError(message)
+        logger.error(message, info)
+        raise ValueError(message, info)
 
 
 class RPCError(Exception):

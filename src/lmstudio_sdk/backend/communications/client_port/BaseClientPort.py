@@ -1,11 +1,12 @@
-import threading
 import asyncio
+import threading
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional
-from ....utils import get_logger, PseudoFuture
+
+import lmstudio_sdk.utils as utils
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class BaseClientPort(ABC):
@@ -57,7 +58,7 @@ class BaseClientPort(ABC):
         pass
 
     @abstractmethod
-    def _promise_event(self) -> asyncio.Future | PseudoFuture:
+    def _promise_event(self) -> asyncio.Future | utils.PseudoFuture:
         pass
 
     @classmethod
@@ -97,7 +98,10 @@ class BaseClientPort(ABC):
         self.channel_handlers[channel_id] = handler
 
         logger.debug(
-            f"Creating channel to '{endpoint}' with ID {channel_id}. To see payload, enable SEND level logging."
+            "Creating channel to '%s' with ID %d. \
+            To see payload, enable SEND level logging.",
+            endpoint,
+            channel_id,
         )
 
         return self._send_payload(
@@ -114,7 +118,9 @@ class BaseClientPort(ABC):
             "message": message,
         }
         logger.debug(
-            f"Sending channel message on channel {channel_id}. To see payload, enable SEND level logging."
+            "Sending channel message on channel %d. \
+            To see payload, enable SEND level logging.",
+            channel_id,
         )
 
         return self._send_payload(payload)
@@ -148,7 +154,10 @@ class BaseClientPort(ABC):
         self.rpc_handlers[call_id] = rpc_handler
 
         logger.debug(
-            f"Sending RPC call to '{endpoint}' with call ID {call_id}. To see payload, enable SEND level logging."
+            "Sending RPC call to '%s' with call ID %d. \
+            To see payload, enable SEND level logging.",
+            endpoint,
+            call_id,
         )
 
         return self._call_rpc(payload, complete, result, postprocess, extra)

@@ -1,20 +1,22 @@
 import json
+import urllib.error
+import urllib.request
 from typing import Optional
-from urllib.request import urlopen
-from urllib.error import URLError
 
-from ...utils import lms_default_ports, get_logger
+import lmstudio_sdk.utils as utils
+
 from .LMStudioClient import LMStudioClient
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class SyncLMStudioClient(LMStudioClient):
+    # TODO: docstring
     def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
         url = f"http://127.0.0.1:{port}/lmstudio-greeting"
         try:
-            with urlopen(url, timeout=5) as response:
+            with urllib.request.urlopen(url, timeout=5) as response:
                 if response.status != 200:
                     raise ValueError("Status is not 200.")
 
@@ -24,11 +26,11 @@ class SyncLMStudioClient(LMStudioClient):
                     raise ValueError("Not an LM Studio server.")
 
                 return port
-        except (URLError, ValueError) as e:
-            raise ValueError(f"Failed to connect to the server: {str(e)}")
+        except (urllib.error.URLError, ValueError) as e:
+            raise ValueError("Failed to connect to the server: %s", str(e))
 
     def _guess_base_url(self) -> str:
-        for port in lms_default_ports:
+        for port in utils.lms_default_ports:
             try:
                 successful_port = (
                     self._is_localhost_with_given_port_lmstudio_server(port)
@@ -39,7 +41,9 @@ class SyncLMStudioClient(LMStudioClient):
                 )
                 return f"ws://127.0.0.1:{successful_port}"
             except ValueError:
-                logger.debug("Failed to connect to LM Studio on port %d.", port)
+                logger.debug(
+                    "Failed to connect to LM Studio on port %d.", port
+                )
                 continue
 
         logger.error(
@@ -63,7 +67,15 @@ class SyncLMStudioClient(LMStudioClient):
     def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
-            self.base_url = self._guess_base_url()
+            try:
+                self.base_url = self._guess_base_url()
+            except RuntimeError:
+                logger.error(
+                    "Failed to guess base_url. Is the LM Studio server running?"
+                )
+                raise ValueError(
+                    "Failed to guess base_url. Is the LM Studio server running?"
+                )
         self._validate_base_url_or_throw(self.base_url)
 
         self._create_ports(False)

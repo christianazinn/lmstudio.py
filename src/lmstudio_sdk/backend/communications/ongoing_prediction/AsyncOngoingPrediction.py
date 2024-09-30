@@ -3,12 +3,8 @@ import asyncio
 from abc import ABC
 from typing import Any, AsyncIterator, Callable, List, Optional
 
-from ....dataclasses import (
-    ModelDescriptor,
-    KVConfig,
-    LLMPredictionStats,
-    PredictionResult,
-)
+import lmstudio_sdk.dataclasses as dc
+
 from .BaseOngoingPrediction import (
     BaseOngoingPrediction,
     BaseStreamableIterator,
@@ -17,8 +13,8 @@ from .BaseOngoingPrediction import (
 )
 
 
-# TODO polish
 class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
+    # TODO: docstring
     def __init__(self):
         super().__init__()
         self.queue: asyncio.Queue[Optional[TFragment]] = asyncio.Queue()
@@ -72,14 +68,16 @@ class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
 
 
 class AsyncOngoingPrediction(
-    StreamablePromise[str, PredictionResult],
-    BaseOngoingPrediction[str, PredictionResult],
+    StreamablePromise[str, dc.PredictionResult],
+    BaseOngoingPrediction[str, dc.PredictionResult],
 ):
+    # TODO: docstring
     """
     Represents an ongoing prediction.
 
-    This class is Promise-like, meaning you can use it as a promise. It resolves to a PredictionResult,
-    which contains the generated text in the `.content` property.
+    This class is Promise-like, meaning you can use it as a promise.
+    It resolves to a PredictionResult, which contains the generated text
+    in the `.content` property.
 
     Example usage:
 
@@ -88,12 +86,16 @@ class AsyncOngoingPrediction(
     print(result.content)
     ```
 
-    You can also use instance methods like `then` and `catch` to handle the result or error of the prediction.
+    You can also use instance methods like `then` and `catch`
+    to handle the result or error of the prediction.
 
-    Alternatively, you can stream the result (process the results as more content is being generated):
+    Alternatively, you can stream the result
+    (process the results as more content is being generated):
 
     ```python
-    async for fragment in model.complete("When will The Winds of Winter be released?"):
+    async for fragment in model.complete(
+        "When will The Winds of Winter be released?"
+    ):
         print(fragment, end='', flush=True)
     ```
     """
@@ -101,12 +103,12 @@ class AsyncOngoingPrediction(
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel
-        self._stats: Optional[LLMPredictionStats] = None
-        self._model_info: Optional[ModelDescriptor] = None
-        self._load_model_config: Optional[KVConfig] = None
-        self._prediction_config: Optional[KVConfig] = None
+        self._stats: Optional[dc.LLMPredictionStats] = None
+        self._model_info: Optional[dc.ModelDescriptor] = None
+        self._load_model_config: Optional[dc.KVConfig] = None
+        self._prediction_config: Optional[dc.KVConfig] = None
 
-    async def collect(self, fragments: List[str]) -> PredictionResult:
+    async def collect(self, fragments: List[str]) -> dc.PredictionResult:
         if self._stats is None:
             raise ValueError("Stats should not be None")
         if self._model_info is None:
@@ -115,7 +117,7 @@ class AsyncOngoingPrediction(
             raise ValueError("Load model config should not be None")
         if self._prediction_config is None:
             raise ValueError("Prediction config should not be None")
-        return PredictionResult(
+        return dc.PredictionResult(
             content="".join(fragments),
             stats=self._stats,
             model_info=self._model_info,
@@ -135,10 +137,10 @@ class AsyncOngoingPrediction(
         ongoing_prediction = AsyncOngoingPrediction(on_cancel)
 
         def finished(
-            stats: LLMPredictionStats,
-            model_info: ModelDescriptor,
-            load_model_config: KVConfig,
-            prediction_config: KVConfig,
+            stats: dc.LLMPredictionStats,
+            model_info: dc.ModelDescriptor,
+            load_model_config: dc.KVConfig,
+            prediction_config: dc.KVConfig,
         ) -> None:
             ongoing_prediction._stats = stats
             ongoing_prediction._model_info = model_info
@@ -154,22 +156,27 @@ class AsyncOngoingPrediction(
 
         return ongoing_prediction, finished, failed, push
 
-    def result(self) -> asyncio.Future[PredictionResult]:
-        """
-        Get the final prediction results. If you have been streaming the results, awaiting on this
-        method will take no extra effort, as the results are already available in the internal buffer.
+    def result(self) -> asyncio.Future[dc.PredictionResult]:
+        """Get the final prediction results.
+
+        If you have been streaming the results,
+        awaiting on this method will take no extra effort,
+        as the results are already available in the internal buffer.
 
         Example:
 
         ```python
-        prediction = model.complete("When will The Winds of Winter be released?")
+        prediction = model.complete(
+            "When will The Winds of Winter be released?"
+        )
         async for fragment in prediction:
             print(fragment, end='', flush=True)
         result = await prediction.result()
         print(result.stats)
         ```
 
-        Technically, awaiting on this method is the same as awaiting on the instance itself:
+        Technically, awaiting on this method
+        is the same as awaiting on the instance itself:
 
         ```python
         await prediction.result()
@@ -182,8 +189,10 @@ class AsyncOngoingPrediction(
         return self.promise_final
 
     async def cancel(self) -> None:
-        """
-        Cancels the prediction. This will stop the prediction with stop reason `userStopped`.
-        See LLMPredictionStopReason for other reasons that a prediction might stop.
+        """Cancels the prediction.
+
+        This will stop the prediction with stop reason `userStopped`.
+        See LLMPredictionStopReason for other reasons
+        that a prediction might stop.
         """
         await self._on_cancel()

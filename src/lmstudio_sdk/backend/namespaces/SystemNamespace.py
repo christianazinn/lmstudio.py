@@ -1,14 +1,16 @@
 from typing import List
 
-from ...dataclasses import DownloadedModel
-from ...utils import LiteralOrCoroutine
+import lmstudio_sdk.dataclasses as dc
+import lmstudio_sdk.utils as utils
+
 from .BaseNamespace import BaseNamespace
 
 
 class SystemNamespace(BaseNamespace):
+    # TODO: docstring
     def list_downloaded_models(
         self,
-    ) -> LiteralOrCoroutine[List[DownloadedModel]]:
+    ) -> utils.LiteralOrCoroutine[List[dc.DownloadedModel]]:
         """
         List all the models that have been downloaded.
         """

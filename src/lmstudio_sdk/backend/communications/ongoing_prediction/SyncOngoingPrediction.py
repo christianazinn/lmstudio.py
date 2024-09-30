@@ -4,12 +4,8 @@ from queue import Queue
 from threading import Event
 from abc import ABC
 
-from ....dataclasses import (
-    KVConfig,
-    LLMPredictionStats,
-    ModelDescriptor,
-    PredictionResult,
-)
+import lmstudio_sdk.dataclasses as dc
+
 from .BaseOngoingPrediction import (
     BaseOngoingPrediction,
     BaseStreamableIterator,
@@ -18,8 +14,8 @@ from .BaseOngoingPrediction import (
 )
 
 
-# TODO polish
 class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
+    # TODO: docstring
     def __init__(self):
         super().__init__()
         self.queue: Queue[Optional[TFragment]] = Queue()
@@ -44,7 +40,7 @@ class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
             self.status = "resolved"
             self._resolve()
 
-        self.queue.put(None)  # Signal end of stream
+        self.queue.put(None)
         self.finished_event.set()
 
     def _resolve(self):
@@ -65,18 +61,19 @@ class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
 
 
 class SyncOngoingPrediction(
-    StreamableIterator[str, PredictionResult],
-    BaseOngoingPrediction[str, PredictionResult],
+    StreamableIterator[str, dc.PredictionResult],
+    BaseOngoingPrediction[str, dc.PredictionResult],
 ):
+    # TODO: docstring
     def __init__(self, on_cancel: Callable[[], None]):
         super().__init__()
         self._on_cancel = on_cancel
-        self._stats: Optional[LLMPredictionStats] = None
-        self._model_info: Optional[ModelDescriptor] = None
-        self._load_model_config: Optional[KVConfig] = None
-        self._prediction_config: Optional[KVConfig] = None
+        self._stats: Optional[dc.LLMPredictionStats] = None
+        self._model_info: Optional[dc.ModelDescriptor] = None
+        self._load_model_config: Optional[dc.KVConfig] = None
+        self._prediction_config: Optional[dc.KVConfig] = None
 
-    def collect(self, fragments: List[str]) -> PredictionResult:
+    def collect(self, fragments: List[str]) -> dc.PredictionResult:
         if self._stats is None:
             raise ValueError("Stats should not be None")
         if self._model_info is None:
@@ -85,7 +82,7 @@ class SyncOngoingPrediction(
             raise ValueError("Load model config should not be None")
         if self._prediction_config is None:
             raise ValueError("Prediction config should not be None")
-        return PredictionResult(
+        return dc.PredictionResult(
             content="".join(fragments),
             stats=self._stats,
             model_info=self._model_info,
@@ -105,10 +102,10 @@ class SyncOngoingPrediction(
         ongoing_prediction = SyncOngoingPrediction(on_cancel)
 
         def finished(
-            stats: LLMPredictionStats,
-            model_info: ModelDescriptor,
-            load_model_config: KVConfig,
-            prediction_config: KVConfig,
+            stats: dc.LLMPredictionStats,
+            model_info: dc.ModelDescriptor,
+            load_model_config: dc.KVConfig,
+            prediction_config: dc.KVConfig,
         ) -> None:
             ongoing_prediction._stats = stats
             ongoing_prediction._model_info = model_info

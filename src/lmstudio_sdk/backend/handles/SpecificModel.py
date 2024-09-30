@@ -1,27 +1,21 @@
-from ...dataclasses import ModelDescriptor
-from ..communications import BaseClientPort
+import lmstudio_sdk.dataclasses as dc
+import lmstudio_sdk.backend.communications as comms
+
 from .DynamicHandle import DynamicHandle
 from .EmbeddingDynamicHandle import EmbeddingDynamicHandle
 from .LLMDynamicHandle import LLMDynamicHandle
 
 
-"""
-Weird inheritance structure:
-With the way common is currently implemented, SpecificModel ends up just being DynamicHandle,
-so we wrap BaseSpecificModel in BaseEmbeddingSpecificModel and BaseLLMSpecificModel for typing and then
-all the methods we want are conveniently inherited. /shrug
-"""
-
-
 class SpecificModel(DynamicHandle):
+    # TODO: docstrings
     identifier: str
     specifier: str
 
     def __init__(
         self,
-        port: BaseClientPort,
+        port: comms.BaseClientPort,
         instance_reference: str,
-        descriptor: ModelDescriptor,
+        descriptor: dc.ModelDescriptor,
     ):
         assert isinstance(instance_reference, str)
         super().__init__(

@@ -1,10 +1,11 @@
 from typing import Callable, Literal, TypedDict
 
-from ...utils import _assert, get_logger
+import lmstudio_sdk.utils as utils
+
 from .BaseNamespace import BaseNamespace
 
 
-logger = get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 class DiagnosticsLogEventData(TypedDict):
@@ -20,6 +21,7 @@ class DiagnosticsLogEvent(TypedDict):
 
 
 class DiagnosticsNamespace(BaseNamespace):
+    # TODO: docstrings
     def unstable_stream_logs(
         self, listener: Callable[[DiagnosticsLogEvent], None]
     ) -> Callable[[], None]:
@@ -30,9 +32,10 @@ class DiagnosticsNamespace(BaseNamespace):
         :alpha:
         """
 
-        _assert(
+        utils._assert(
             isinstance(listener, Callable),
-            f"unstable_stream_logs: listener must be a callable, got {type(listener)}",
+            "unstable_stream_logs: listener must be a callable, got %s",
+            type(listener),
             logger,
         )
 

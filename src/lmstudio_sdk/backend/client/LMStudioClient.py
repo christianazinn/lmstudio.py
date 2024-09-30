@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import lmstudio_sdk.utils as utils
-import lmstudio_sdk.backend.namespaces as namespaces
+import lmstudio_sdk.backend.namespaces as ns
 
 
 logger = utils.get_logger(__name__)
@@ -13,51 +13,55 @@ class LMStudioClient(ABC):
     client_identifier: str
     base_url: Optional[str]
 
-    llm: namespaces.LLMNamespace = None
-    embedding: namespaces.EmbeddingNamespace = None
-    system: namespaces.SystemNamespace = None
-    diagnostics: namespaces.DiagnosticsNamespace = None
+    llm: ns.LLMNamespace = None
+    embedding: ns.EmbeddingNamespace = None
+    system: ns.SystemNamespace = None
+    diagnostics: ns.DiagnosticsNamespace = None
 
     def _validate_base_url_or_throw(self, base_url):
         error_msg = None
+        error_info = None
         try:
             url = urllib.parse.urlparse(base_url)
         except ValueError:
-            error_msg = f"Failed to construct LMStudioClient. The baseUrl passed in is invalid. Received: {base_url}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed in is invalid. Received: %s"
+            error_info = base_url
+            logger.error(error_msg, error_info)
+            raise ValueError(error_msg, error_info)
 
         if url.scheme not in ["ws", "wss"]:
-            error_msg = f"""
-                    Failed to construct LMStudioClient. The baseUrl passed in must have protocol "ws" or "wss". \
-                    Received: {base_url}
-                """
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed in must have protocol 'ws' or 'wss'. \
+                Received: %s."
+            error_info = url.scheme
 
         elif url.query:
-            error_msg = f"""
-                    Failed to construct LMStudioClient. The baseUrl passed contains search parameters \
-                    ("{url.query}").
-                """
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed contains search parameters ('%s')."
+            error_info = url.query
 
         elif url.fragment:
-            error_msg = f"Failed to construct LMStudioClient. The baseUrl passed contains a hash ('{url.fragment}')."
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed contains a hash ('%s')."
+            error_info = url.fragment
 
         elif url.username or url.password:
-            error_msg = f"""
-                    Failed to construct LMStudioClient. The baseUrl passed contains a username or password. We \
-                    do not support these in the baseUrl. Received: {base_url}
-                """
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed contains a username or password. \
+                We do not support these in the baseUrl. Received: %s"
+            error_info = url.username
 
         elif base_url.endswith("/"):
-            error_msg = f"""
-                    Failed to construct LMStudioClient. The baseUrl passed in must not end with a "/". If you \
-                    are reverse-proxying, you should remove the trailing slash from the baseUrl. Received: \
-                    {base_url}
-                """
+            error_msg = "Failed to construct LMStudioClient. \
+                The baseUrl passed in must not end with a '/'. \
+                If you are reverse-proxying, you should remove \
+                the trailing slash from the baseUrl. Received: %s"
+            error_info = base_url
 
-        if error_msg:
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        if error_msg and error_info:
+            logger.error(error_msg, error_info)
+            raise ValueError(error_msg, error_info)
 
     @abstractmethod
     def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
@@ -93,7 +97,10 @@ class LMStudioClient(ABC):
         else:
             from ..communications import SyncClientPort as ClientPort
         logger.info(
-            f"Creating {'async' if is_async else 'sync'} ports at {self.base_url} as {self.client_identifier}..."
+            "Creating %s ports at %s as %s...",
+            "async" if is_async else "sync",
+            self.base_url,
+            self.client_identifier,
         )
 
         llm_port = ClientPort(
@@ -118,10 +125,10 @@ class LMStudioClient(ABC):
             self.__client_passkey,
         )
 
-        self.llm = namespaces.LLMNamespace(llm_port)
-        self.embedding = namespaces.EmbeddingNamespace(embedding_port)
-        self.system = namespaces.SystemNamespace(system_port)
-        self.diagnostics = namespaces.DiagnosticsNamespace(diagnostics_port)
+        self.llm = ns.LLMNamespace(llm_port)
+        self.embedding = ns.EmbeddingNamespace(embedding_port)
+        self.system = ns.SystemNamespace(system_port)
+        self.diagnostics = ns.DiagnosticsNamespace(diagnostics_port)
         logger.debug("Finished initializing ports and namespaces.")
 
     # ensure you connect and close properly!

@@ -5,13 +5,15 @@ import urllib.error
 from typing import Optional
 
 import lmstudio_sdk.utils as utils
-import LMStudioClient
+
+from .LMStudioClient import LMStudioClient
 
 
 logger = utils.get_logger(__name__)
 
 
-class AsyncLMStudioClient(LMStudioClient.LMStudioClient):
+class AsyncLMStudioClient(LMStudioClient):
+    # TODO: docstring
     async def _is_localhost_with_given_port_lmstudio_server(
         self, port: int
     ) -> int:
@@ -31,7 +33,7 @@ class AsyncLMStudioClient(LMStudioClient.LMStudioClient):
             return port
         except (urllib.error.URLError, ValueError) as e:
             logger.debug("Failed to connect to LM Studio on port %d.", port)
-            raise ValueError(f"Failed to connect to the server: {str(e)}")
+            raise ValueError("Failed to connect to the server: %s", str(e))
         finally:
             conn.close()
 
@@ -40,7 +42,9 @@ class AsyncLMStudioClient(LMStudioClient.LMStudioClient):
             port = await asyncio.wait_for(
                 asyncio.gather(
                     *[
-                        self._is_localhost_with_given_port_lmstudio_server(port)
+                        self._is_localhost_with_given_port_lmstudio_server(
+                            port
+                        )
                         for port in utils.lms_default_ports
                     ],
                     return_exceptions=True,
@@ -56,12 +60,9 @@ class AsyncLMStudioClient(LMStudioClient.LMStudioClient):
             logger.error(
                 "Failed to connect to LM Studio on any of the default ports."
             )
-            raise ValueError("""
-                Failed to connect to LM Studio on the default port (1234).
-                Is LM Studio running? If not, you can start it by running `lms server start`.
-                (i) For more information, refer to the LM Studio documentation:
-                https://lmstudio.ai/docs/local-server
-            """)
+            raise ValueError(
+                "Failed to connect to LM Studio on any of the default ports."
+            )
 
     def __init__(
         self,
@@ -74,7 +75,15 @@ class AsyncLMStudioClient(LMStudioClient.LMStudioClient):
     async def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
-            self.base_url = await self._guess_base_url()
+            try:
+                self.base_url = await self._guess_base_url()
+            except RuntimeError:
+                logger.error(
+                    "Failed to guess base_url. Is the LM Studio server running?"
+                )
+                raise ValueError(
+                    "Failed to guess base_url. Is the LM Studio server running?"
+                )
         self._validate_base_url_or_throw(self.base_url)
 
         self._create_ports(True)
