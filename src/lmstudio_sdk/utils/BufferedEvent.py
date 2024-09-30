@@ -1,12 +1,12 @@
+import threading
 from abc import ABC, abstractmethod
-from threading import Lock
 from typing import Callable, List
 
 
 class BaseBufferedEvent(ABC):
     def __init__(self):
         self.subscribers: List[Callable[[], None]] = []
-        self.lock = Lock()
+        self.lock = threading.Lock()
 
     def subscribeOnce(self, callback: Callable[[], None]):
         with self.lock:
@@ -23,6 +23,7 @@ class BaseBufferedEvent(ABC):
 
 
 class AsyncBufferedEvent(BaseBufferedEvent):
+    # TODO docstring
     async def emit(self):
         with self.lock:
             for subscriber in self.subscribers:
@@ -36,6 +37,7 @@ class AsyncBufferedEvent(BaseBufferedEvent):
 
 
 class SyncBufferedEvent(BaseBufferedEvent):
+    # TODO docstring
     def emit(self):
         with self.lock:
             for subscriber in self.subscribers:

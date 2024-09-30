@@ -36,6 +36,7 @@ logging.Logger.websocket = websocket
 
 
 def get_logger(name):
+    """Get a lmstudio_sdk logger with the given name."""
     logger = logging.getLogger(name)
     if not logger.hasHandlers():
         # Configure basic logging

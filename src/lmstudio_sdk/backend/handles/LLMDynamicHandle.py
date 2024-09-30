@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Coroutine, List, Optional, Tuple
 
 import lmstudio_sdk.dataclasses as dc
 import lmstudio_sdk.utils as utils
@@ -145,7 +145,7 @@ class LLMDynamicHandle(DynamicHandle):
         model_specifier: dc.ModelSpecifier,
         context: dc.LLMContext,
         prediction_config_stack: dc.KVConfigStack,
-        cancel_event: utils.BaseBufferedEvent,
+        cancel_event: utils.SyncBufferedEvent | utils.AsyncBufferedEvent,
         extra_opts: dc.LLMPredictionExtraOpts,
         on_fragment: Callable[[str], None],
         on_finished: Callable[
@@ -160,7 +160,10 @@ class LLMDynamicHandle(DynamicHandle):
         on_error: Callable[[Exception], None],
         postprocess: Callable[[dict], Any],
         extra: Optional[dict] = None,
-    ) -> utils.LiteralOrCoroutine[comms.BaseOngoingPrediction]:
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         finished = self._port._rpc_complete_event()
         is_first_token = True
 
@@ -238,7 +241,10 @@ class LLMDynamicHandle(DynamicHandle):
         self,
         prompt: dc.LLMCompletionContextInput,
         opts: Optional[dc.LLMPredictionOpts],
-    ) -> utils.LiteralOrCoroutine[comms.BaseOngoingPrediction]:
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         """
         Use the loaded model to predict text.
 
@@ -354,7 +360,10 @@ class LLMDynamicHandle(DynamicHandle):
         self,
         history: dc.LLMConversationContextInput,
         opts: Optional[dc.LLMPredictionOpts] = None,
-    ) -> utils.LiteralOrCoroutine[comms.BaseOngoingPrediction]:
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         """
         Use the loaded model to generate a response based on the given history.
 
@@ -418,7 +427,10 @@ class LLMDynamicHandle(DynamicHandle):
         self,
         context: dc.LLMContext,
         opts: Optional[dc.LLMPredictionOpts] = None,
-    ) -> utils.LiteralOrCoroutine[comms.BaseOngoingPrediction]:
+    ) -> (
+        comms.SyncOngoingPrediction
+        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
+    ):
         config, extra_opts = self.__split_opts(opts)
 
         if self._port.is_async():

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import lmstudio_sdk.utils as utils
+import lmstudio_sdk.backend.communications as comms
 import lmstudio_sdk.backend.namespaces as ns
 
 
@@ -93,9 +94,9 @@ class LMStudioClient(ABC):
             raise ValueError(error_msg)
 
         if is_async:
-            from ..communications import AsyncClientPort as ClientPort
+            ClientPort = comms.AsyncClientPort
         else:
-            from ..communications import SyncClientPort as ClientPort
+            ClientPort = comms.SyncClientPort
         logger.info(
             "Creating %s ports at %s as %s...",
             "async" if is_async else "sync",

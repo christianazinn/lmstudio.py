@@ -3,7 +3,7 @@
 # ruff: noqa: F401
 # TODO: docstring
 
-from .client_port import AsyncClientPort, BaseClientPort, SyncClientPort
+from ._client_port import AsyncClientPort, BaseClientPort, SyncClientPort
 from .ongoing_prediction import (
     AsyncOngoingPrediction,
     BaseOngoingPrediction,
@@ -12,6 +12,5 @@ from .ongoing_prediction import (
 
 __all__ = [
     "AsyncOngoingPrediction",
-    "BaseOngoingPrediction",
     "SyncOngoingPrediction",
 ]

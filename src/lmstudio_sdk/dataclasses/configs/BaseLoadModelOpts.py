@@ -1,4 +1,4 @@
-from typing import Callable, Generic, NotRequired, TypedDict, TypeVar
+from typing import Callable, Generic, NotRequired, TypedDict, TypeVar, Union
 
 import lmstudio_sdk.utils as utils
 
@@ -24,7 +24,7 @@ class BaseLoadModelOpts(TypedDict, Generic[TLoadModelConfig]):
     The configuration to use when loading the model.
     """
 
-    signal: NotRequired[utils.BaseAbortSignal]
+    signal: NotRequired[Union[utils.AsyncAbortSignal, utils.SyncAbortSignal]]
     """
     An `AbortSignal` to cancel the model loading. This is useful if you wish to add a functionality
     to cancel the model loading.

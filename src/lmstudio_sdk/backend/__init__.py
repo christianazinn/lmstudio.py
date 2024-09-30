@@ -1,7 +1,8 @@
+# TODO: docstring
+
 from .client import AsyncLMStudioClient, LMStudioClient, SyncLMStudioClient
 from .communications import (
     AsyncOngoingPrediction,
-    BaseOngoingPrediction,
     SyncOngoingPrediction,
 )
 from .handles import (
@@ -21,7 +22,6 @@ from .namespaces import (
 __all__ = [
     "AsyncLMStudioClient",
     "AsyncOngoingPrediction",
-    "BaseOngoingPrediction",
     "DiagnosticsNamespace",
     "DynamicHandle",
     "EmbeddingDynamicHandle",
