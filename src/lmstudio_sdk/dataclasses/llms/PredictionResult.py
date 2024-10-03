@@ -1,12 +1,10 @@
-from typing import TypedDict
-
 import lmstudio_sdk.dataclasses.models as models
 
 from .KVConfig import KVConfig
 from .LLMPredictionStats import LLMPredictionStats
 
 
-class PredictionResult(TypedDict):
+class PredictionResult:
     """Represents the result of a prediction.
 
     The most notable property is `content`,
@@ -29,3 +27,17 @@ class PredictionResult(TypedDict):
 
     prediction_config: KVConfig
     """The configuration used for the prediction."""
+
+    def __init__(
+        self,
+        content: str,
+        stats: LLMPredictionStats,
+        model_info: models.ModelDescriptor,
+        load_config: KVConfig,
+        prediction_config: KVConfig,
+    ):
+        self.content = content
+        self.stats = stats
+        self.model_info = model_info
+        self.load_config = load_config
+        self.prediction_config = prediction_config

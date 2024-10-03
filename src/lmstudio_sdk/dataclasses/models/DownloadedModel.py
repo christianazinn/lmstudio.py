@@ -1,7 +1,7 @@
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, Optional
 
 
-class DownloadedModel(TypedDict):
+class DownloadedModel:
     """Represents a model that exists locally and can be loaded."""
 
     type: Literal["llm", "embedding"]
@@ -13,5 +13,17 @@ class DownloadedModel(TypedDict):
     size_bytes: int
     """The size of the model in bytes."""
 
-    architecture: NotRequired[str]
+    architecture: Optional[str]
     """The architecture of the model."""
+
+    def __init__(
+        self,
+        type: Literal["llm", "embedding"],
+        path: str,
+        sizeBytes: int,
+        architecture: Optional[str] = None,
+    ):
+        self.type = type
+        self.path = path
+        self.size_bytes = sizeBytes
+        self.architecture = architecture

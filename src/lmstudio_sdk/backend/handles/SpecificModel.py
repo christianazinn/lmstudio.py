@@ -7,9 +7,12 @@ from .LLMDynamicHandle import LLMDynamicHandle
 
 
 class SpecificModel(DynamicHandle):
-    # TODO: docstrings
+    """Represents a specific model on the remote server.
+
+    Retains a reference to the specific instance reference of the model.
+    """
+
     identifier: str
-    specifier: str
 
     def __init__(
         self,
@@ -30,18 +33,14 @@ class SpecificModel(DynamicHandle):
 
 
 class EmbeddingSpecificModel(EmbeddingDynamicHandle, SpecificModel):
-    """
-    Represents a specific loaded Embedding. Most Embedding related operations are inherited from
-    {@link EmbeddingDynamicHandle}.
+    """Represents a specific loaded embedding model.
 
-    :public:
+    Embedding related operations are inherited from EmbeddingDynamicHandle.
     """
 
 
 class LLMSpecificModel(LLMDynamicHandle, SpecificModel):
-    """
-    Represents a specific loaded LLM. Most LLM related operations are inherited from
-    {@link LLMDynamicHandle}.
+    """Represents a specific loaded LLM.
 
-    :public:
+    LLM related operations are inherited from LLMDynamicHandle.
     """

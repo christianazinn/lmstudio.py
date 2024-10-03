@@ -2,6 +2,7 @@ import json
 import urllib.error
 import urllib.request
 from typing import Optional
+from typing_extensions import override
 
 import lmstudio_sdk.utils as utils
 
@@ -12,7 +13,45 @@ logger = utils.get_logger(__name__)
 
 
 class SyncLMStudioClient(LMStudioClient):
-    # TODO: docstring
+    """Synchronous client for the LM Studio server.
+
+    Intended to be a drop-in replacement for the OpenAI Python SDK.
+    If you are porting code from TypeScript, are building an application
+    with asyncio, or desire greater control over the event loop, consider
+    using the asynchronous client instead.
+
+    Do not construct this directly unless you know what you are doing.
+    Instead, use the `LMStudioClient` factory function: it will return
+    an instance of this class if called normally.
+
+    Methods are dot accessed through the four namespaces:
+    llm, embedding, system, and diagnostics. For example:
+
+    ```python
+    llm_client = LMStudioClient()
+
+    print(llm_client.system.list_downloaded_models())
+
+    model = llm_client.llm.get("qwen2")
+    result = model.respond(
+        [{"role": "user", "content": "Tell me a long story."}],
+        {}
+    )
+
+    for completion in result:
+        print(completion)
+    ```
+
+    Attributes:
+        client_identifier: Unique identifier for the client.
+        base_url: Base URL for the LM Studio server.
+        llm: Method namespace for interacting with LLM models.
+        embedding: Method namespace for interacting with embedding models.
+        system: Method namespace for LM Studio system functions.
+        diagnostics: Method namespace for server diagnostics.
+    """
+
+    @override
     def _is_localhost_with_given_port_lmstudio_server(self, port: int) -> int:
         url = f"http://127.0.0.1:{port}/lmstudio-greeting"
         try:
@@ -29,6 +68,7 @@ class SyncLMStudioClient(LMStudioClient):
         except (urllib.error.URLError, ValueError) as e:
             raise ValueError("Failed to connect to the server: %s", str(e))
 
+    @override
     def _guess_base_url(self) -> str:
         for port in utils.lms_default_ports:
             try:
@@ -64,6 +104,7 @@ class SyncLMStudioClient(LMStudioClient):
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 
+    @override
     def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
@@ -103,6 +144,7 @@ class SyncLMStudioClient(LMStudioClient):
 
         return self
 
+    @override
     def close(self):
         logger.info(
             "Closing connection to LM Studio server at %s...", self.base_url

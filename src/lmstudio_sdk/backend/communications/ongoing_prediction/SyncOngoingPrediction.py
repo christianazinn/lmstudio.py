@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Any, Callable, Iterator, List, Optional
-from queue import Queue
-from threading import Event
 from abc import ABC
+from threading import Event
+from typing import Any, Callable, Iterator, List, Optional
+from typing_extensions import override
+from queue import Queue
 
 import lmstudio_sdk.dataclasses as dc
 
@@ -15,20 +16,23 @@ from .BaseOngoingPrediction import (
 
 
 class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
-    # TODO: docstring
-    def __init__(self):
-        super().__init__()
+    """An abstract synchronous streamable iterator."""
+
+    def __init__(self, on_cancel: Callable[[], None]):
+        super().__init__(on_cancel)
         self.queue: Queue[Optional[TFragment]] = Queue()
         self.final_result: Optional[TFinal] = None
         self.error: Optional[Any] = None
         self.finished_event = Event()
 
+    @override
     def push(self, fragment: TFragment) -> None:
         if self.status != "pending":
             return
         self.buffer.append(fragment)
         self.queue.put(fragment)
 
+    @override
     def finished(self, error: Optional[Any] = None) -> None:
         if self.status != "pending":
             return
@@ -43,6 +47,7 @@ class StreamableIterator(BaseStreamableIterator[TFragment, TFinal], ABC):
         self.queue.put(None)
         self.finished_event.set()
 
+    @override
     def _resolve(self):
         try:
             self.final_result = self.collect(self.buffer)
@@ -64,15 +69,34 @@ class SyncOngoingPrediction(
     StreamableIterator[str, dc.PredictionResult],
     BaseOngoingPrediction[str, dc.PredictionResult],
 ):
-    # TODO: docstring
-    def __init__(self, on_cancel: Callable[[], None]):
-        super().__init__()
-        self._on_cancel = on_cancel
-        self._stats: Optional[dc.LLMPredictionStats] = None
-        self._model_info: Optional[dc.ModelDescriptor] = None
-        self._load_model_config: Optional[dc.KVConfig] = None
-        self._prediction_config: Optional[dc.KVConfig] = None
+    """
+    Represents an ongoing prediction.
 
+    This resolves to a PredictionResult, which contains the generated text
+    in the `.content` property.
+
+    Example usage:
+
+    ```python
+    completion = model.complete(
+        "When will The Winds of Winter be released?"
+    )
+    result = completion.result()
+    print(result.content)
+    ```
+
+    Alternatively, you can stream the result
+    (process the results as more content is being generated):
+
+    ```python
+    for fragment in model.complete(
+        "When will The Winds of Winter be released?"
+    ):
+        print(fragment, end='', flush=True)
+    ```
+    """
+
+    @override
     def collect(self, fragments: List[str]) -> dc.PredictionResult:
         if self._stats is None:
             raise ValueError("Stats should not be None")
@@ -90,38 +114,30 @@ class SyncOngoingPrediction(
             prediction_config=self._prediction_config,
         )
 
-    @staticmethod
-    def create(
-        on_cancel: Callable[[], None],
-    ) -> tuple[
-        SyncOngoingPrediction,
-        Callable[..., None],
-        Callable[..., None],
-        Callable[[str], None],
-    ]:
-        ongoing_prediction = SyncOngoingPrediction(on_cancel)
+    @override
+    def result(self) -> dc.PredictionResult:
+        """Get the final prediction results.
 
-        def finished(
-            stats: dc.LLMPredictionStats,
-            model_info: dc.ModelDescriptor,
-            load_model_config: dc.KVConfig,
-            prediction_config: dc.KVConfig,
-        ) -> None:
-            ongoing_prediction._stats = stats
-            ongoing_prediction._model_info = model_info
-            ongoing_prediction._load_model_config = load_model_config
-            ongoing_prediction._prediction_config = prediction_config
-            ongoing_prediction.finished()
+        If you have been streaming the results,
+        calling this method will take no extra effort,
+        as the results are already available in the internal buffer.
 
-        def failed(error: Any = None) -> None:
-            ongoing_prediction.finished(error)
+        Example:
 
-        def push(fragment: str) -> None:
-            ongoing_prediction.push(fragment)
+        ```python
+        prediction = model.complete(
+            "When will The Winds of Winter be released?"
+        )
+        for fragment in prediction:
+            print(fragment, end='', flush=True)
+        result = prediction.result()
+        print(result.stats)
+        ```
 
-        return ongoing_prediction, finished, failed, push
-
-    def result(self) -> TFinal:
+        Returns:
+            The final prediction results.
+        ```
+        """
         self.finished_event.wait()
         if self.status == "rejected":
             raise self.error
@@ -129,9 +145,12 @@ class SyncOngoingPrediction(
             raise ValueError("Result is not available")
         return self.final_result
 
+    @override
     def cancel(self) -> None:
-        """
-        Cancels the prediction. This will stop the prediction with stop reason `userStopped`.
-        See LLMPredictionStopReason for other reasons that a prediction might stop.
+        """Cancels the prediction.
+
+        This will stop the prediction with stop reason `userStopped`.
+        See LLMPredictionStopReason for other reasons
+        that a prediction might stop.
         """
         self._on_cancel()

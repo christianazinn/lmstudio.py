@@ -1,26 +1,31 @@
 import enum
-from typing import NotRequired, TypedDict
+from typing import Optional
 
 
 class LLMPredictionStopReason(str, enum.Enum):
-    # TODO docstrings
-    """
-    Represents the reason why a prediction stopped. Only the following values are possible:
+    """The reason why a prediction stopped.
 
-    - `userStopped`: The user stopped the prediction. This includes calling the `cancel` method on
-      the `SyncOngoingPrediction` object.
+    Only the following values are possible:
+
+    - `userStopped`: The user stopped the prediction.
+      This includes calling the `cancel` method
+      on the `OngoingPrediction` object.
     - `modelUnloaded`: The model was unloaded during the prediction.
     - `failed`: An error occurred during the prediction.
-    - `eosFound`: The model predicted an end-of-sequence token, which is a way for the model to
-      indicate that it "thinks" the sequence is complete.
-    - `stopStringFound`: A stop string was found in the prediction. (Stop strings can be specified
-      with the `stop_strings` config option. This stop reason will only occur if the `stop_strings`
-      config option is set to an array of strings.)
-    - `maxPredictedTokensReached`: The maximum number of tokens to predict was reached. (Length limit
-      can be specified with the `maxPredictedTokens` config option. This stop reason will only occur
-      if the `maxPredictedTokens` config option is set to a value other than -1.)
-    - `contextLengthReached`: The context length was reached. This stop reason will only occur if the
-      `context_overflow_policy` is set to `stopAtLimit`.
+    - `eosFound`: The model predicted an end-of-sequence token,
+      which is a way for the model to indicate that it "thinks"
+      the sequence is complete.
+    - `stopStringFound`: A stop string was found in the prediction.
+      Stop strings can be specified with the `stop_strings` config option.
+      This stop reason will only occur if the `stop_strings`
+      config option is set to an array of strings.
+    - `maxPredictedTokensReached`: The maximum number of tokens to predict
+      was reached. Length limit can be specified with the `maxPredictedTokens`
+      config option. This stop reason will only occur if
+      the `maxPredictedTokens` config option is set to a value other than -1.
+    - `contextLengthReached`: The context length was reached.
+      This stop reason will only occur if the `context_overflow_policy`
+      is set to `stopAtLimit`.
     """
 
     USER_STOPPED = "userStopped"
@@ -32,63 +37,71 @@ class LLMPredictionStopReason(str, enum.Enum):
     CONTEXT_LENGTH_REACHED = "contextLengthReached"
 
 
-class LLMPredictionStats(TypedDict):
-    # TODO docstrings
-    """
-    @public
-    """
+class LLMPredictionStats:
+    """Statistics about a prediction."""
 
     stop_reason: LLMPredictionStopReason
-    """
-    The reason why the prediction stopped.
+    """The reason why the prediction stopped.
 
-    This is a string enum with the following possible values:
+    Only the following values are possible:
 
-    - `userStopped`: The user stopped the prediction. This includes calling the `cancel` method on
-      the `SyncOngoingPrediction` object.
+    - `userStopped`: The user stopped the prediction.
+      This includes calling the `cancel` method
+      on the `OngoingPrediction` object.
     - `modelUnloaded`: The model was unloaded during the prediction.
     - `failed`: An error occurred during the prediction.
-    - `eosFound`: The model predicted an end-of-sequence token, which is a way for the model to
-      indicate that it "thinks" the sequence is complete.
-    - `stopStringFound`: A stop string was found in the prediction. (Stop strings can be specified
-      with the `stop_strings` config option. This stop reason will only occur if the `stop_strings`
-      config option is set.)
-    - `maxPredictedTokensReached`: The maximum number of tokens to predict was reached. (Length
-      limit can be specified with the `maxPredictedTokens` config option. This stop reason will
-      only occur if the `maxPredictedTokens` config option is set to a value other than -1.)
-    - `contextLengthReached`: The context length was reached. This stop reason will only occur if
-      the `context_overflow_policy` is set to `stopAtLimit`.
+    - `eosFound`: The model predicted an end-of-sequence token,
+      which is a way for the model to indicate that it "thinks"
+      the sequence is complete.
+    - `stopStringFound`: A stop string was found in the prediction.
+      Stop strings can be specified with the `stop_strings` config option.
+      This stop reason will only occur if the `stop_strings`
+      config option is set to an array of strings.
+    - `maxPredictedTokensReached`: The maximum number of tokens to predict
+      was reached. Length limit can be specified with the `maxPredictedTokens`
+      config option. This stop reason will only occur if
+      the `maxPredictedTokens` config option is set to a value other than -1.
+    - `contextLengthReached`: The context length was reached.
+      This stop reason will only occur if the `context_overflow_policy`
+      is set to `stopAtLimit`.
     """
 
-    tokens_per_second: NotRequired[float]
-    """
-    The average number of tokens predicted per second.
+    tokens_per_second: Optional[float]
+    """The average number of tokens predicted per second.
 
-    Note: This value can be None in the case of a very short prediction which results in a
-    NaN or a Infinity value.
-    """
-
-    num_gpu_layers: NotRequired[int]
-    """
-    The number of GPU layers used in the prediction.
+    Note: This value can be None in the case of a very short prediction,
+    which results in a NaN or a Infinity value.
     """
 
-    time_to_first_token_sec: NotRequired[float]
-    """
-    The time it took to predict the first token in seconds.
-    """
+    num_gpu_layers: Optional[int]
+    """The number of GPU layers used in the prediction."""
 
-    prompt_tokens_count: NotRequired[int]
-    """
-    The number of tokens that were supplied.
-    """
+    time_to_first_token_sec: Optional[float]
+    """The time it took to predict the first token in seconds."""
 
-    predicted_tokens_count: NotRequired[int]
-    """
-    The number of tokens that were predicted.
-    """
+    prompt_tokens_count: Optional[int]
+    """The number of tokens that were supplied."""
 
-    total_tokens_count: NotRequired[int]
-    """
-    The total number of tokens. This is the sum of the prompt tokens and the predicted tokens.
-    """
+    predicted_tokens_count: Optional[int]
+    """The number of tokens that were predicted."""
+
+    total_tokens_count: Optional[int]
+    """The total number of tokens. This is the sum of the prompt tokens and the predicted tokens."""
+
+    def __init__(
+        self,
+        stopReason: LLMPredictionStopReason,
+        tokensPerSecond: Optional[float],
+        numGpuLayers: Optional[int],
+        timeToFirstTokenSec: Optional[float],
+        promptTokensCount: Optional[int],
+        predictedTokensCount: Optional[int],
+        totalTokensCount: Optional[int],
+    ):
+        self.stop_reason = stopReason
+        self.tokens_per_second = tokensPerSecond
+        self.num_gpu_layers = numGpuLayers
+        self.time_to_first_token_sec = timeToFirstTokenSec
+        self.prompt_tokens_count = promptTokensCount
+        self.predicted_tokens_count = predictedTokensCount
+        self.total_tokens_count = totalTokensCount

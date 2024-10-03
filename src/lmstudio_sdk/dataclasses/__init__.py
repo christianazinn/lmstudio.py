@@ -1,8 +1,14 @@
 # pylance: disable=unused-imports
 # flake8: noqa: f401
 # ruff: noqa: F401
+"""Dataclasses representing the data structures used in the LLM API.
 
-# TODO: docstring
+Most of these are typed dicts that are used to pass data to and from the LLM API,
+particularly in the case of long and repetitive argument dictionaries.
+
+For more information, see the individual classes and submodules.
+"""
+
 from .configs import (
     BaseLoadModelOpts,
     EmbeddingLoadModelConfig,

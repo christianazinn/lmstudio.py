@@ -6,7 +6,7 @@ ModelDomainType = Literal["llm", "embedding"]
 
 
 class ModelQuery(TypedDict):
-    """Represents a query for a loaded LLM."""
+    """A query for a loaded model."""
 
     domain: NotRequired[ModelDomainType]
     """The domain of the model."""

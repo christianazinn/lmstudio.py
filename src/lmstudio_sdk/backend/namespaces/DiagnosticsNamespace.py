@@ -21,7 +21,8 @@ class DiagnosticsLogEvent(TypedDict):
 
 
 class DiagnosticsNamespace(BaseNamespace):
-    # TODO: docstrings
+    """Method namespace for server diagnostics."""
+
     def unstable_stream_logs(
         self, listener: Callable[[DiagnosticsLogEvent], None]
     ) -> Callable[[], None]:
@@ -29,7 +30,12 @@ class DiagnosticsNamespace(BaseNamespace):
         Register a callback to receive log events. Return a function to stop receiving log events.
 
         This method is in alpha. Do not use this method in production yet.
-        :alpha:
+
+        Args:
+            listener: A callback that will receive log events.
+
+        Returns:
+            A function that will stop receiving log events.
         """
 
         utils._assert(

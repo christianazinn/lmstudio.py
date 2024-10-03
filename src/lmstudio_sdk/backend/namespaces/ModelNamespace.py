@@ -1,6 +1,7 @@
 import time
 from abc import ABC, abstractmethod
 from typing import Generic, List, Optional, TypeVar, Union
+from typing_extensions import override
 
 import lmstudio_sdk.dataclasses as dc
 import lmstudio_sdk.utils as utils
@@ -19,6 +20,7 @@ TSpecificModel = TypeVar("TSpecificModel", bound=handles.SpecificModel)
 
 
 def load_process_result(extra):
+    """Cancel handler callback for load."""
     logger.debug(extra)
     channel_id = extra.get("channelId")
     extra = extra.get("extra")
@@ -38,12 +40,7 @@ class ModelNamespace(
     Generic[TLoadModelConfig, TDynamicHandle, TSpecificModel],
     ABC,
 ):
-    # TODO: docstring
-    """
-    Abstract namespace for namespaces that deal with models.
-
-    :public:
-    """
+    """Abstract namespace for namespaces that deal with models."""
 
     _namespace: dc.ModelDomainType
     _default_load_config: TLoadModelConfig
@@ -52,9 +49,7 @@ class ModelNamespace(
     def _load_config_to_kv_config(
         self, config: TLoadModelConfig
     ) -> dc.KVConfig:
-        """
-        Method for converting the domain-specific load config to KVConfig.
-        """
+        """Convert the domain-specific load config to KVConfig."""
         pass
 
     @abstractmethod
@@ -64,55 +59,32 @@ class ModelNamespace(
         instance_reference: str,
         descriptor: dc.ModelDescriptor,
     ) -> TSpecificModel:
-        """
-        Method for creating a domain-specific model.
-        """
+        """Create a domain-specific model."""
         pass
 
     @abstractmethod
     def _create_domain_dynamic_handle(
         self, port: comms.BaseClientPort, specifier: dc.ModelSpecifier
     ) -> TDynamicHandle:
-        """
-        Method for creating a domain-specific dynamic handle.
-        """
+        """Create a domain-specific dynamic handle."""
         pass
 
     def create_dynamic_handle(
         self, query: Union[dc.ModelQuery, str]
     ) -> TDynamicHandle:
-        """
-        Get a dynamic model handle for any loaded model that satisfies the given query.
+        """Create a dynamic handle for any loaded model that satisfies the query.
 
-        For more information on the query, see {@link ModelQuery}.
+        For more information on the query, see ModelQuery.
 
-        Note: The returned `LLMModel` is not tied to any specific loaded model. Instead, it represents
-        a "handle for a model that satisfies the given query". If the model that satisfies the query is
-        unloaded, the `LLMModel` will still be valid, but any method calls on it will fail. And later,
-        if a new model is loaded that satisfies the query, the `LLMModel` will be usable again.
+        Note: The returned `DynamicHandle` is not tied to any specific
+        loaded model. Instead, it represents a handle for a model
+        that satisfies the given query. If the model that satisfies
+        the query is unloaded, the `DynamicHandle` will still be valid,
+        but any method calls on it will fail until another model
+        satisfying the query is loaded.,
 
-        You can use {@link LLMDynamicHandle#getModelInfo} to get information about the model that is
-        currently associated with this handle.
-
-        :example:
-
-        If you have loaded a model with the identifier "my-model", you can use it like this:
-
-        ```ts
-        const dh = client.llm.createDynamicHandle({ identifier: "my-model" });
-        const prediction = dh.complete("...");
-        ```
-
-        :example:
-
-        Use the Gemma 2B IT model (given it is already loaded elsewhere):
-
-        ```ts
-        const dh = client.llm.createDynamicHandle({ path: "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF" });
-        const prediction = dh.complete("...");
-        ```
-
-        :param query: The query to use to get the model.
+        You can use `.get_model_info()` to get information about the model
+        that is currently associated with this handle.
         """
         if isinstance(query, str):
             query = {"identifier": query}
@@ -139,11 +111,7 @@ class ModelNamespace(
     def create_dynamic_handle_from_instance_reference(
         self, instance_reference: str
     ) -> TDynamicHandle:
-        """
-        Create a dynamic handle from the internal instance reference.
-
-        :alpha:
-        """
+        """Create a dynamic handle from the internal instance reference."""
         return self._create_domain_dynamic_handle(
             self._port,
             {
@@ -157,45 +125,38 @@ class ModelNamespace(
         path: str,
         opts: Optional[dc.BaseLoadModelOpts[TLoadModelConfig]] = None,
     ) -> utils.LiteralOrCoroutine[TSpecificModel]:
-        """
-        Load a model for inferencing. The first parameter is the model path. The second parameter is an
-        optional object with additional options. By default, the model is loaded with the default
-        preset (as selected in LM Studio) and the verbose option is set to true.
-
-        When specifying the model path, you can use the following format:
-
-        `<publisher>/<repo>[/model_file]`
-
-        If `model_file` is not specified, the first (sorted alphabetically) model in the repository is
-        loaded.
+        """Load a model for inferencing.
 
         To find out what models are available, you can use the `lms ls` command, or programmatically
-        use the `client.system.listDownloadedModels` method.
+        use the `client.system.list_downloaded_models()` method.
 
         Here are some examples:
 
-        Loading Llama 3:
+        Loading Llama 3 synchronously (asynchronously, just tack on `await`):
 
-        ```typescript
-        const model = await client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF");
+        ```python
+        model = client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF")
         ```
 
-        Loading a specific quantization (q4_k_m) of Llama 3:
+        To unload the model, you can use the `client.llm.unload` method.
+        Additionally, when the last client with the same `client_identifier`
+        disconnects, all models loaded by that client will be automatically
+        unloaded.
 
-        ```typescript
-        const model = await client.llm.load("lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf");
-        ```
+        Once loaded, see `LLMDynamicHandle` or `EmbeddingDynamicHandle`
+        for how to use the model.
 
-        To unload the model, you can use the `client.llm.unload` method. Additionally, when the last
-        client with the same `clientIdentifier` disconnects, all models loaded by that client will be
-        automatically unloaded.
+        Args:
+            path: The path to the model to load. Use the format
+                `<publisher>/<repo>[/model_file]`. If `model_file` is not
+                specified, the first (sorted alphabetically) model in the
+                repository is loaded.
+            opts: Additional options for loading the model. By default,
+                the model is loaded with the defaults set in the LM Studio
+                server mode, and verbose is set to true.
 
-        Once loaded, see {@link LLMDynamicHandle} or {@link EmbeddingDynamicHandle} for how to use the
-        model for inferencing or other things you can do with the model.
-
-        :param path: The path of the model to load.
-        :param opts: Options for loading the model.
-        :return: A promise that resolves to the model that can be used for inferencing
+        Returns:
+            A `SpecificModel` that can be used to interact with the model.
         """
 
         utils._assert(
@@ -300,11 +261,14 @@ class ModelNamespace(
         )
 
     def unload(self, identifier: str) -> None:
-        """
-        Unload a model. Once a model is unloaded, it can no longer be used. If you wish to use the
-        model afterwards, you will need to load it with {@link LLMNamespace#loadModel} again.
+        """Unload a model.
 
-        :param identifier: The identifier of the model to unload.
+        Once a model is unloaded, it can no longer be used.
+        If you wish to use the model afterwards, you will need to load it
+        with `load()` again.
+
+        Args:
+            identifier: The identifier of the model to unload.
         """
         utils._assert(
             isinstance(identifier, str),
@@ -319,44 +283,43 @@ class ModelNamespace(
     def list_loaded(
         self,
     ) -> utils.LiteralOrCoroutine[List[dc.ModelDescriptor]]:
-        """
-        List all the currently loaded models.
-        """
+        """List all the currently loaded models."""
         return self._port.call_rpc("listLoaded", None, lambda x: x)
 
     def get(
         self, query: Union[dc.ModelQuery, str]
     ) -> utils.LiteralOrCoroutine[TSpecificModel]:
-        """
-        Get a specific model that satisfies the given query. The returned model is tied to the specific
-        model at the time of the call.
+        """Get a specific model that satisfies the given query.
 
-        For more information on the query, see {@link ModelQuery}.
+        The returned model is tied to the specific model at call time.
 
-        :example:
+        For more information on the query, see `ModelQuery`.
 
-        If you have loaded a model with the identifier "my-model", you can use it like this:
+        For instance, if you have loaded a model with the identifier
+        "my-model", you can use it like this:
 
-        ```ts
-        const model = await client.llm.get({ identifier: "my-model" });
-        const prediction = model.complete("...");
+        ```python
+        model = client.llm.get({"identifier": "my-model"})
+        prediction = model.complete("...")
         ```
 
         Or just
 
-        ```ts
-        const model = await client.llm.get("my-model");
-        const prediction = model.complete("...");
+        ```python
+        model = client.llm.get("my-model")
+        prediction = model.complete("...")
         ```
 
-        :example:
+        (tacking on `await` where needed in async code).
 
-        Use the Gemma 2B IT model (given it is already loaded elsewhere):
+        Args:
+            query: The query to satisfy. Can be a string or a `ModelQuery`.
 
-        ```ts
-        const model = await client.llm.get({ path: "lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF" });
-        const prediction = model.complete("...");
-        ```
+        Returns:
+            A `SpecificModel` that can be used to interact with the model.
+
+        Raises:
+            Exception: If the model is not found.
         """
         if isinstance(query, str):
             query = {"identifier": query}
@@ -390,18 +353,30 @@ class ModelNamespace(
         )
 
     def unstable_get_any(self) -> utils.LiteralOrCoroutine[TSpecificModel]:
+        """Get any loaded model.
+
+        Returns:
+            A `SpecificModel` that can be used to interact with the model.
+        """
         return self.get({})
 
-    # doesn't need to be decorated because if async, the return types are coroutines already!
     def unstable_get_or_load(
         self,
         identifier: str,
         path: str,
         load_opts: Optional[dc.BaseLoadModelOpts[TLoadModelConfig]] = None,
     ) -> utils.LiteralOrCoroutine[TSpecificModel]:
-        """
-        Extremely early alpha. Will cause errors in console. Can potentially throw if called in
-        parallel. Do not use in production yet.
+        """Get a model if it is loaded, else load it.
+
+        Args:
+            identifier: The identifier of the model to get.
+            path: The path to the model to load.
+            load_opts: Additional options for loading the model. By default,
+                the model is loaded with the defaults set in the LM Studio
+                server mode, and verbose is set to true.
+
+        Returns:
+            A `SpecificModel` that can be used to interact with the model.
         """
         utils._assert(
             isinstance(identifier, str),
@@ -438,10 +413,12 @@ class EmbeddingNamespace(
         handles.EmbeddingSpecificModel,
     ],
 ):
-    # TODO: docstring
+    """Namespace for embedding models."""
+
     _namespace = "embedding"
     _default_load_config: dc.EmbeddingLoadModelConfig = {}
 
+    @override
     def _load_config_to_kv_config(
         self, config: dc.EmbeddingLoadModelConfig
     ) -> dc.KVConfig:
@@ -473,6 +450,7 @@ class EmbeddingNamespace(
             )
         return dc.convert_dict_to_kv_config(fields)
 
+    @override
     def _create_domain_specific_model(
         self,
         port: comms.BaseClientPort,
@@ -483,6 +461,7 @@ class EmbeddingNamespace(
             port, instance_reference, descriptor
         )
 
+    @override
     def _create_domain_dynamic_handle(
         self, port: comms.BaseClientPort, specifier: dc.ModelSpecifier
     ) -> handles.EmbeddingDynamicHandle:
@@ -496,10 +475,12 @@ class LLMNamespace(
         handles.LLMSpecificModel,
     ],
 ):
-    # TODO: docstring
+    """Namespace for LLM models."""
+
     _namespace = "llm"
     _default_load_config: dc.LLMLoadModelConfig = {}
 
+    @override
     def _load_config_to_kv_config(
         self, config: dc.LLMLoadModelConfig
     ) -> dc.KVConfig:
@@ -549,6 +530,7 @@ class LLMNamespace(
             )
         return dc.convert_dict_to_kv_config(fields)
 
+    @override
     def _create_domain_specific_model(
         self,
         port: comms.BaseClientPort,
@@ -557,6 +539,7 @@ class LLMNamespace(
     ) -> handles.LLMSpecificModel:
         return handles.LLMSpecificModel(port, instance_reference, descriptor)
 
+    @override
     def _create_domain_dynamic_handle(
         self, port: comms.BaseClientPort, specifier: dc.ModelSpecifier
     ) -> handles.LLMDynamicHandle:
