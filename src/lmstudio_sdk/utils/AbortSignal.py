@@ -37,7 +37,13 @@ class BaseAbortSignal(ABC):
 
 
 class AsyncAbortSignal(BaseAbortSignal):
-    # TODO docstring
+    """An asynchronous signal that can be used to abort an operation.
+
+    Ported from the AbortSignal class in the JavaScript DOM API.
+    Unfortunately we have to distinguish between async/sync abort signals
+    due to the nature of calling listeners, but the interface is the same.
+    """
+
     def __init__(self):
         super().__init__()
         self._event = asyncio.Event()
@@ -57,7 +63,13 @@ class AsyncAbortSignal(BaseAbortSignal):
 
 
 class SyncAbortSignal(BaseAbortSignal):
-    # TODO docstring
+    """A synchronous signal that can be used to abort an operation.
+
+    Ported from the AbortSignal class in the JavaScript DOM API.
+    Unfortunately we have to distinguish between async/sync abort signals
+    due to the nature of calling listeners, but the interface is the same.
+    """
+
     def __init__(self):
         super().__init__()
         self._event = threading.Event()

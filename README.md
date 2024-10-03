@@ -99,6 +99,8 @@ As usual, each level logs all levels above it. Depending on the backend, you can
 
 ### Known Limitations
 
-Currently aborting doesn't play very well with synchronous code. Synchronous code might hang and not respect SIGINT (Ctrl+C). Preprocessors are not implemented, nor are diagnostics (and all of the `DiagnosticsNamespace` at that). Please disregard TODOs.
+Currently aborting doesn't play very well with synchronous code. Preprocessors are not implemented, and please disregard TODOs.
+
+Synchronous code is less tested than async code. Synchronous code might hang and not respect SIGINT if calling `result()` on a model load or prediction request. In fact this is a [known issue](https://bugs.python.org/issue35935) with the way `threading.Event.wait()` blocks.
 
 Documentation is also still coming, as are unit tests - maybe there's a typo somewhere in untested code that causes a method to not function properly. This library isn't released yet for a reason.

@@ -1,3 +1,19 @@
+"""The Python SDK for the LM Studio WebSocket API.
+
+Use this SDK to interact with the LM Studio server using Python.
+It provides a strict superset of whatever you could do with
+calling the HTTP OpenAI-like API with the OpenAI Python SDK,
+and is intended to be a near drop-in replacement.
+
+It also provides feature parity with the TypeScript SDK, so any
+code you have in TypeScript can be translated almost directly
+to Python.
+
+Please refer to the README on the official project GitHub
+for examples and documentation.
+"""
+# TODO: make a better and longer docstring
+
 from .backend import (
     AsyncLMStudioClient,
     AsyncOngoingPrediction,
