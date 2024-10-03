@@ -224,8 +224,15 @@ class LLMDynamicHandle(DynamicHandle):
                 nonlocal finished
                 finished.set()
                 logger.debug("Prediction completed successfully.")
+                try:
+                    stats = dc.LLMPredictionStats(**message.get("stats", {}))
+                except Exception as e:
+                    logger.error(
+                        "Failed to parse prediction stats: %s", str(e)
+                    )
+                    stats = dc.LLMPredictionStats()
                 on_finished(
-                    message.get("stats", {}),
+                    stats,
                     message.get("descriptor", {}),
                     message.get("loadConfig", {}),
                     message.get("predictionConfig", {}),

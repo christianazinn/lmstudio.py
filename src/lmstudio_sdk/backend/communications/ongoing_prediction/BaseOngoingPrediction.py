@@ -17,10 +17,6 @@ class BaseStreamableIterator(Generic[TFragment, TFinal], ABC):
         # technically these are ongoing prediction specific,
         # but the inheritance hierarchy makes it easier to put them here
         self._on_cancel = on_cancel
-        self._stats: Optional[dc.LLMPredictionStats] = None
-        self._model_info: Optional[dc.ModelDescriptor] = None
-        self._load_model_config: Optional[dc.KVConfig] = None
-        self._prediction_config: Optional[dc.KVConfig] = None
 
     @abstractmethod
     def collect(self, fragments: List[str]) -> dc.PredictionResult:
@@ -41,6 +37,11 @@ class BaseStreamableIterator(Generic[TFragment, TFinal], ABC):
 
 class BaseOngoingPrediction(BaseStreamableIterator[TFragment, TFinal], ABC):
     """An abstract ongoing prediction."""
+
+    _stats: Optional[dc.LLMPredictionStats] = None
+    _model_info: Optional[dc.ModelDescriptor] = None
+    _load_model_config: Optional[dc.KVConfig] = None
+    _prediction_config: Optional[dc.KVConfig] = None
 
     @classmethod
     def create(

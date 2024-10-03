@@ -90,30 +90,18 @@ class LLMPredictionStats:
 
     def __init__(
         self,
-        stop_reason: LLMPredictionStopReason,
-        tokens_per_second: Optional[float],
-        num_gpu_layers: Optional[int],
-        time_to_first_token_sec: Optional[float],
-        prompt_tokens_count: Optional[int],
-        predicted_tokens_count: Optional[int],
-        total_tokens_count: Optional[int],
+        stopReason: LLMPredictionStopReason,
+        tokensPerSecond: Optional[float],
+        numGpuLayers: Optional[int],
+        timeToFirstTokenSec: Optional[float],
+        promptTokensCount: Optional[int],
+        predictedTokensCount: Optional[int],
+        totalTokensCount: Optional[int],
     ):
-        self.stop_reason = stop_reason
-        self.tokens_per_second = tokens_per_second
-        self.num_gpu_layers = num_gpu_layers
-        self.time_to_first_token_sec = time_to_first_token_sec
-        self.prompt_tokens_count = prompt_tokens_count
-        self.predicted_tokens_count = predicted_tokens_count
-        self.total_tokens_count = total_tokens_count
-
-
-def dict_to_stats(d: dict) -> LLMPredictionStats:
-    return LLMPredictionStats(
-        stop_reason=LLMPredictionStopReason(d.get("stop_reason")),
-        tokens_per_second=d.get("tokens_per_second"),
-        num_gpu_layers=d.get("num_gpu_layers"),
-        time_to_first_token_sec=d.get("time_to_first_token_sec"),
-        prompt_tokens_count=d.get("prompt_tokens_count"),
-        predicted_tokens_count=d.get("predicted_tokens_count"),
-        total_tokens_count=d.get("total_tokens_count"),
-    )
+        self.stop_reason = stopReason
+        self.tokens_per_second = tokensPerSecond
+        self.num_gpu_layers = numGpuLayers
+        self.time_to_first_token_sec = timeToFirstTokenSec
+        self.prompt_tokens_count = promptTokensCount
+        self.predicted_tokens_count = predictedTokensCount
+        self.total_tokens_count = totalTokensCount

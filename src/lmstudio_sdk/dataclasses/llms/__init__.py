@@ -47,11 +47,7 @@ from .KVConfig import (
     KVConfigStack,
     KVConfigStackLayer,
 )
-from .LLMPredictionStats import (
-    dict_to_stats,
-    LLMPredictionStopReason,
-    LLMPredictionStats,
-)
+from .LLMPredictionStats import LLMPredictionStopReason, LLMPredictionStats
 from .PredictionResult import PredictionResult
 
 __all__ = [
