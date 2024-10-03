@@ -7,11 +7,10 @@ from .BaseNamespace import BaseNamespace
 
 
 class SystemNamespace(BaseNamespace):
-    # TODO: docstring
+    """Method namespace for LM Studio system functions."""
+
     def list_downloaded_models(
         self,
     ) -> utils.LiteralOrCoroutine[List[dc.DownloadedModel]]:
-        """
-        List all the models that have been downloaded.
-        """
+        """List all the models that have been downloaded."""
         return self._port.call_rpc("listDownloadedModels", None, lambda x: x)

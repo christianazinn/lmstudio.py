@@ -196,7 +196,6 @@ class LLMDynamicHandle(DynamicHandle):
         is_first_token = True
 
         def handle_fragments(message: dict):
-            """Handle incoming messages related to this prediction."""
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
@@ -239,7 +238,6 @@ class LLMDynamicHandle(DynamicHandle):
                 on_error(utils.ChannelError(message.get("error").get("title")))
 
         def cancel_send(channel_id):
-            """Send a cancel message to the server."""
             logger.info(
                 "Attempting to send cancel message to channel %d.", channel_id
             )
