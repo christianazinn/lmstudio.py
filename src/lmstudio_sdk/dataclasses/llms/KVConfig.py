@@ -3,13 +3,15 @@ from typing import Any, List, TypedDict
 
 
 class KVConfigField(TypedDict):
-    """Represents a key-value configuration field."""
+    """A key-value configuration field."""
+
     key: str
     value: Any
 
 
 class KVConfig(TypedDict):
-    """Represents a key-value configuration object."""
+    """A key-value configuration object."""
+
     fields: List[KVConfigField]
 
 
@@ -31,7 +33,8 @@ def find_key_in_kv_config(kv_config: KVConfig, key: str) -> Any:
 
 
 class KVConfigLayerName(str, enum.Enum):
-    # TODO docstrings
+    """A key-value configuration layer name."""
+
     # Config that is currently loaded by the model
     CURRENTLY_LOADED = "currentlyLoaded"
 
@@ -64,11 +67,13 @@ class KVConfigLayerName(str, enum.Enum):
 
 
 class KVConfigStackLayer(TypedDict):
-    """Represents a layer in a KVConfigStack."""
+    """A key-value configuration stack layer."""
+
     layerName: KVConfigLayerName
     config: KVConfig
 
 
 class KVConfigStack(TypedDict):
-    """Represents a stack of KVConfigLayers."""
+    """A key-value configuration stack."""
+
     layers: List[KVConfigStackLayer]

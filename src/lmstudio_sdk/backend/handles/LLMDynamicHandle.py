@@ -482,7 +482,46 @@ class LLMDynamicHandle(DynamicHandle):
                 "History must be a list conforming to \
                 LLMConversationContextInput, got something else."
             )
-        return self.predict(resolved_context, opts)
+
+        config, extra_opts = self.__split_opts(opts)
+
+        if self._port.is_async():
+            OngoingPrediction = comms.AsyncOngoingPrediction
+            BufferedEvent = utils.AsyncBufferedEvent
+        else:
+            OngoingPrediction = comms.SyncOngoingPrediction
+            BufferedEvent = utils.SyncBufferedEvent
+
+        cancel_event, emit_cancel_event = BufferedEvent.create()
+        ongoing_prediction, finished, failed, push = OngoingPrediction.create(
+            emit_cancel_event
+        )
+
+        prediction_layers = self._internal_kv_config_stack.get("layers", [])
+        prediction_layers.append(
+            dc.KVConfigStackLayer(
+                layerName=dc.KVConfigLayerName.API_OVERRIDE,
+                config=self.__prediction_config_to_kv_config(config),
+            )
+        )
+
+        return self.__predict_internal(
+            self._specifier,
+            resolved_context,
+            {"layers": prediction_layers},
+            cancel_event,
+            extra_opts,
+            lambda fragment: push(fragment),
+            lambda stats,
+            model_info,
+            load_model_config,
+            prediction_config: finished(
+                stats, model_info, load_model_config, prediction_config
+            ),
+            lambda error: failed(error),
+            lambda x: x.get("ongoing_prediction"),
+            extra={"ongoing_prediction": ongoing_prediction},
+        )
 
     def unstable_get_context_length(self) -> utils.LiteralOrCoroutine[int]:
         """Get the context length of the model.
