@@ -11,6 +11,7 @@ logger = utils.get_logger(__name__)
 
 
 def predict_internal_process_result(extra):
+    """Abort handler callback for predict_internal."""
     original_extra = extra.get("extra")
     cancel_event = original_extra.get("cancel_event")
     cancel_send = original_extra.get("cancel_send")
@@ -22,17 +23,17 @@ def predict_internal_process_result(extra):
 
 
 class LLMDynamicHandle(DynamicHandle):
-    # TODO: docstrings
-    """
-    This represents a set of requirements for a model. It is not tied to a specific model, but rather
+    """Represents a set of requirements for a model.
+
+    It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
 
-    For example, if you got the model via `client.llm.get("my-identifier")`, you will get a
-    `LLMModel` for the model with the identifier `my-identifier`. If the model is unloaded, and
-    another model is loaded with the same identifier, using the same `LLMModel` will use the new
-    model.
-
-    :public:
+    For example, if you got the model via `client.llm.get({
+    "identifier": "my-identifier"})`, you will get a
+    `LLMSpecificModel` for the model with the identifier
+    `my-identifier`. If the model is unloaded, and another model
+    is loaded with the same identifier,
+    using the same `LLMSpecificModel` will use the new model.
     """
 
     _internal_kv_config_stack = dc.KVConfigStack(layers=[])
@@ -40,6 +41,7 @@ class LLMDynamicHandle(DynamicHandle):
     def __prediction_config_to_kv_config(
         self, prediction_config: Optional[dc.LLMPredictionConfig]
     ) -> dc.KVConfig:
+        """Converts a prediction config to a KVConfig."""
         fields = []
         if prediction_config is not None:
             for default_key in [
@@ -164,10 +166,37 @@ class LLMDynamicHandle(DynamicHandle):
         comms.SyncOngoingPrediction
         | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
     ):
+        """Internal method for a prediction process.
+
+        Should never be called externally! This is not part of the public API.
+
+        Args:
+            model_specifier: The model specifier of the model
+                to use for prediction.
+            context: The context to use for prediction. Will usually be
+                formatted by a public API method.
+            prediction_config_stack: The prediction config stack.
+            cancel_event: A pending prediction cancel event, to be registered.
+                Will be added to the returned ongoing prediction
+                and triggerable using `.cancel()`.
+            extra_opts: Extra prediction options not in the config stack.
+            on_fragment: Callback on receiving a response fragment.
+            on_finished: Callback on response completion.
+            on_error: Callback on channel error.
+            postprocess: The postprocess handler. See `BaseClientPort`.
+            extra: Extra data. See `BaseClientPort`.
+
+        Returns:
+            The ongoing prediction invoked on the server.
+
+        Raises:
+            ChannelError: if an error occurs in the channel during prediction.
+        """
         finished = self._port._rpc_complete_event()
         is_first_token = True
 
         def handle_fragments(message: dict):
+            """Handle incoming messages related to this prediction."""
             message_type = message.get("type", "")
             if message_type == "fragment":
                 on_fragment(message.get("fragment", ""))
@@ -210,6 +239,7 @@ class LLMDynamicHandle(DynamicHandle):
                 on_error(utils.ChannelError(message.get("error").get("title")))
 
         def cancel_send(channel_id):
+            """Send a cancel message to the server."""
             logger.info(
                 "Attempting to send cancel message to channel %d.", channel_id
             )
@@ -240,7 +270,7 @@ class LLMDynamicHandle(DynamicHandle):
     def complete(
         self,
         prompt: dc.LLMCompletionContextInput,
-        opts: Optional[dc.LLMPredictionOpts],
+        opts: Optional[dc.LLMPredictionOpts] = None,
     ) -> (
         comms.SyncOngoingPrediction
         | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
@@ -248,47 +278,56 @@ class LLMDynamicHandle(DynamicHandle):
         """
         Use the loaded model to predict text.
 
-        This method returns an {@link SyncOngoingPrediction} object. An ongoing prediction can be used as a
-        promise (if you only care about the final result) or as an async iterable (if you want to
-        stream the results as they are being generated).
+        This method returns an OngoingPrediction object,
+        sync or async depending on the client context.
+        It can be used as a "promise" if you only care about the final result
+        or as an (async) iterable if you want to stream the results as they
+        are generated.
 
-        Example usage as a promise (Resolves to a {@link PredictionResult}):
+        Example synchronous usage as a promise (Resolves to a `PredictionResult`):
 
-        ```typescript
-        const result = await model.complete("When will The Winds of Winter be released?");
-        console.log(result.content);
+        ```python
+        result = model.complete("When will The Winds of Winter be released?")
+        print(result.result().content)
         ```
 
-        Or
+        And asynchronous:
 
-        ```typescript
-        model.complete("When will The Winds of Winter be released?")
-         .then(result => console.log(result.content))
-         .catch(error => console.error(error));
+        ```python
+        result = await model.complete("When will The Winds of Winter be released?")
+        print((await result).content)
         ```
 
-        Example usage as an async iterable (streaming):
+        Example usage as sync iterable (streaming):
 
-        ```typescript
-        for await (const fragment of model.complete("When will The Winds of Winter be released?")) {
-          process.stdout.write(fragment);
-        }
+        ```python
+        completion = model.complete("When will The Winds of Winter be released?")
+
+        for (fragment of completion):
+            print(fragment, end='')
         ```
 
-        If you wish to stream the result, but also getting the final prediction results (for example,
-        you wish to get the prediction stats), you can use the following pattern:
+        And asynchronous:
 
-        ```typescript
-        const prediction = model.complete("When will The Winds of Winter be released?");
-        for await (const fragment of prediction) {
-          process.stdout.write(fragment);
-        }
-        const result = await prediction;
-        console.log(result.stats);
+        ```python
+        completion = await model.complete("When will The Winds of Winter be released?")
+        async for fragment in completion:
+            print(fragment, end='')
         ```
 
-        :param prompt: The prompt to use for prediction.
-        :param opts: Options for the prediction.
+        The result is already available in the internal buffer after streaming,
+        so calling `result()` (e.g. to get prediction stats) will not block.
+
+        The OngoingPrediction object can also be used to cancel the prediction
+        using `cancel()`.
+
+        Args:
+            prompt: The prompt to use for generating a completion.
+            opts: Options for the prediction, if any. Defaults to using the
+                options set in the LM Studio server.
+
+        Returns:
+            An OngoingPrediction object representing the prediction process.
         """
         utils._assert(
             isinstance(prompt, str),
@@ -367,51 +406,75 @@ class LLMDynamicHandle(DynamicHandle):
         """
         Use the loaded model to generate a response based on the given history.
 
-        This method returns an {@link SyncOngoingPrediction} object. An ongoing prediction can be used as a
-        promise (if you only care about the final result) or as an async iterable (if you want to
-        stream the results as they are being generated).
+        This method returns an OngoingPrediction object,
+        sync or async depending on the client context.
+        It can be used as a "promise" if you only care about the final result
+        or as an (async) iterable if you want to stream the results as they
+        are generated.
 
-        Example usage as a promise (Resolves to a {@link PredictionResult}):
+        If you are tracking a conversation, you should modify the chat `history`
+        within your application; whatever is sent to this method will be used
+        in the prediction! This method does not store any conversation state.
+        For instance, if you are creating a chat UI, simply modifying an entry
+        in the `history` list will update the conversation as if the user
+        edited a message.
 
-        ```typescript
-        const history = [{ role: 'user', content: "When will The Winds of Winter be released?" }];
-        const result = await model.respond(history);
-        console.log(result.content);
+        Example synchronous usage as a promise (Resolves to a `PredictionResult`):
+
+        ```python
+        result = model.respond([{
+            "role": "user",
+            "content": "When will The Winds of Winter be released?"
+        }])
+        print(result.result().content)
         ```
 
-        Or
+        And asynchronous:
 
-        ```typescript
-        const history = [{ role: 'user', content: "When will The Winds of Winter be released?" }];
-        model.respond(history)
-         .then(result => console.log(result.content))
-         .catch(error => console.error(error));
+        ```python
+        result = await model.respond([{
+            "role": "user",
+            "content": "When will The Winds of Winter be released?"
+        }])
+        print((await result).content)
         ```
 
-        Example usage as an async iterable (streaming):
+        Example usage as sync iterable (streaming):
 
-        ```typescript
-        const history = [{ role: 'user', content: "When will The Winds of Winter be released?" }];
-        for await (const fragment of model.respond(history)) {
-          process.stdout.write(fragment);
-        }
+        ```python
+        completion = model.respond([{
+            "role": "user",
+            "content": "When will The Winds of Winter be released?"
+        }])
+
+        for (fragment of completion):
+            print(fragment, end='')
         ```
 
-        If you wish to stream the result, but also getting the final prediction results (for example,
-        you wish to get the prediction stats), you can use the following pattern:
+        And asynchronous:
 
-        ```typescript
-        const history = [{ role: 'user', content: "When will The Winds of Winter be released?" }];
-        const prediction = model.respond(history);
-        for await (const fragment of prediction) {
-          process.stdout.write(fragment);
-        }
-        const result = await prediction;
-        console.log(result.stats);
+        ```python
+        completion = await model.respond([{
+            "role": "user",
+            "content": "When will The Winds of Winter be released?"
+        }])
+        async for fragment in completion:
+            print(fragment, end='')
         ```
 
-        :param history: The LLMChatHistory array to use for generating a response.
-        :param opts: Options for the prediction.
+        The result is already available in the internal buffer after streaming,
+        so calling `result()` (e.g. to get prediction stats) will not block.
+
+        The OngoingPrediction object can also be used to cancel the prediction
+        using `cancel()`.
+
+        Args:
+            history: The chat history to use for generating a completion.
+            opts: Options for the prediction, if any. Defaults to using the
+                options set in the LM Studio server.
+
+        Returns:
+            An OngoingPrediction object representing the prediction process.
         """
         try:
             resolved_context = self.__resolve_conversation_context(history)
@@ -423,55 +486,12 @@ class LLMDynamicHandle(DynamicHandle):
             )
         return self.predict(resolved_context, opts)
 
-    def predict(
-        self,
-        context: dc.LLMContext,
-        opts: Optional[dc.LLMPredictionOpts] = None,
-    ) -> (
-        comms.SyncOngoingPrediction
-        | Coroutine[Any, Any, comms.AsyncOngoingPrediction]
-    ):
-        config, extra_opts = self.__split_opts(opts)
-
-        if self._port.is_async():
-            OngoingPrediction = comms.AsyncOngoingPrediction
-            BufferedEvent = utils.AsyncBufferedEvent
-        else:
-            OngoingPrediction = comms.SyncOngoingPrediction
-            BufferedEvent = utils.SyncBufferedEvent
-
-        cancel_event, emit_cancel_event = BufferedEvent.create()
-        ongoing_prediction, finished, failed, push = OngoingPrediction.create(
-            emit_cancel_event
-        )
-
-        prediction_layers = self._internal_kv_config_stack.get("layers", [])
-        prediction_layers.append(
-            dc.KVConfigStackLayer(
-                layerName=dc.KVConfigLayerName.API_OVERRIDE,
-                config=self.__prediction_config_to_kv_config(config),
-            )
-        )
-
-        return self.__predict_internal(
-            self._specifier,
-            context,
-            {"layers": prediction_layers},
-            cancel_event,
-            extra_opts,
-            lambda fragment: push(fragment),
-            lambda stats,
-            model_info,
-            load_model_config,
-            prediction_config: finished(
-                stats, model_info, load_model_config, prediction_config
-            ),
-            lambda error: failed(error),
-            lambda x: x.get("ongoing_prediction"),
-            extra={"ongoing_prediction": ongoing_prediction},
-        )
-
     def unstable_get_context_length(self) -> utils.LiteralOrCoroutine[int]:
+        """Get the context length of the model.
+
+        Returns:
+            The context length of the model.
+        """
         return self.get_load_config(
             postprocess=lambda x: dc.find_key_in_kv_config(
                 x, "llm.load.contextLength"
@@ -484,6 +504,15 @@ class LLMDynamicHandle(DynamicHandle):
         context: dc.LLMContext,
         opts: Optional[dc.LLMApplyPromptTemplateOpts] = None,
     ) -> utils.LiteralOrCoroutine[str]:
+        """Apply a prompt template to the given context.
+
+        Args:
+            context: The context to apply the prompt template to.
+            opts: Options for applying the prompt template, if any.
+
+        Returns:
+            The formatted prompt template.
+        """
         return self._port.call_rpc(
             "applyPromptTemplate",
             {
@@ -498,6 +527,17 @@ class LLMDynamicHandle(DynamicHandle):
     def unstable_tokenize(
         self, input_string: str
     ) -> utils.LiteralOrCoroutine[List[int]]:
+        """Tokenize the input string.
+
+        Always tokenize using the exact model you will be using
+        for prediction, as tokenization can vary between models.
+
+        Args:
+            input_string: The string to tokenize.
+
+        Returns:
+            A list of integers representing the tokenized string.
+        """
         utils._assert(
             isinstance(input_string, str),
             "unstable_tokenize: input_string must be a string, got %s",
@@ -513,6 +553,14 @@ class LLMDynamicHandle(DynamicHandle):
     def unstable_count_tokens(
         self, input_string: str
     ) -> utils.LiteralOrCoroutine[int]:
+        """Count the number of tokens in the input string.
+
+        Args:
+            input_string: The string to count the tokens of.
+
+        Returns:
+            The number of tokens in the input string.
+        """
         utils._assert(
             isinstance(input_string, str),
             "unstable_count_tokens: input_string must be a string, got %s",

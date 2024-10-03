@@ -6,18 +6,10 @@ import lmstudio_sdk.backend.communications as comms
 
 
 class DynamicHandle:
-    # TODO: docstrings
     """Represents a set of requirements for a model.
 
     It is not tied to a specific model, but rather
     to a set of requirements that a model must satisfy.
-
-    For example, if you got the model via
-    `client.llm.get("my-identifier")`,
-    you will get a `LLMModel` for the model with the identifier
-    `my-identifier`. If the model is unloaded, and another model
-    is loaded with the same identifier,
-    using the same `LLMModel` will use the new model.
     """
 
     _port: comms.BaseClientPort
@@ -32,12 +24,13 @@ class DynamicHandle:
     def get_model_info(
         self,
     ) -> utils.LiteralOrCoroutine[Optional[dc.ModelDescriptor]]:
-        """Gets the information of the currently associated model.
+        """Get the information of the currently associated model.
 
-        If no model is currently associated, this will return `None`.
+        As models are loaded/unloaded, the model associated
+        with this method may change at any moment.
 
-        Note: As models are loaded/unloaded, the model associated
-        with this `LLMModel` may change at any moment.
+        Returns:
+            The model descriptor if the model is loaded, else `None`.
         """
         return self._port.call_rpc(
             "getModelInfo",
@@ -48,6 +41,13 @@ class DynamicHandle:
     def get_load_config(
         self, postprocess: Callable[[dict], Any] = lambda x: x
     ) -> utils.LiteralOrCoroutine[dc.KVConfig]:
+        """Get the load configuration of the currently associated model.
+
+        Most often used under the hood to get a particular load config value.
+
+        Returns:
+            The load configuration of the model.
+        """
         return self._port.call_rpc(
             "getLoadConfig", {"specifier": self._specifier}, postprocess
         )

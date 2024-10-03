@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABC
 from typing import Any, AsyncIterator, Callable, List, Optional
+from typing_extensions import override
 
 import lmstudio_sdk.dataclasses as dc
 
@@ -14,18 +15,21 @@ from .BaseOngoingPrediction import (
 
 
 class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
-    # TODO: docstring
-    def __init__(self):
-        super().__init__()
+    """An abstract streamable async iterator that can be awaited on."""
+
+    def __init__(self, on_cancel: Callable[[], None]):
+        super().__init__(on_cancel)
         self.queue: asyncio.Queue[Optional[TFragment]] = asyncio.Queue()
         self.promise_final: asyncio.Future[TFinal] = asyncio.Future()
 
+    @override
     def push(self, fragment: TFragment) -> None:
         if self.status != "pending":
             return
         self.buffer.append(fragment)
         self.queue.put_nowait(fragment)
 
+    @override
     def finished(self, error: Optional[Any] = None) -> None:
         if self.status != "pending":
             return
@@ -39,6 +43,7 @@ class StreamablePromise(BaseStreamableIterator[TFragment, TFinal], ABC):
 
         self.queue.put_nowait(None)  # Signal end of stream
 
+    @override
     async def _resolve(self):
         try:
             result = await self.collect(self.buffer)
@@ -71,23 +76,31 @@ class AsyncOngoingPrediction(
     StreamablePromise[str, dc.PredictionResult],
     BaseOngoingPrediction[str, dc.PredictionResult],
 ):
-    # TODO: docstring
     """
     Represents an ongoing prediction.
 
-    This class is Promise-like, meaning you can use it as a promise.
-    It resolves to a PredictionResult, which contains the generated text
+    This resolves to a PredictionResult, which contains the generated text
     in the `.content` property.
 
     Example usage:
 
     ```python
-    result = await model.complete("When will The Winds of Winter be released?")
+    completion = await model.complete(
+        "When will The Winds of Winter be released?"
+    )
+    result = await completion.result()
     print(result.content)
     ```
 
-    You can also use instance methods like `then` and `catch`
-    to handle the result or error of the prediction.
+    You can also await directly on the completion object, resulting
+    in a bit of an awkward syntax:
+
+    ```python
+    result = await (await model.complete(
+        "When will The Winds of Winter be released?"
+    ))
+    print(result.content)
+    ```
 
     Alternatively, you can stream the result
     (process the results as more content is being generated):
@@ -100,14 +113,7 @@ class AsyncOngoingPrediction(
     ```
     """
 
-    def __init__(self, on_cancel: Callable[[], None]):
-        super().__init__()
-        self._on_cancel = on_cancel
-        self._stats: Optional[dc.LLMPredictionStats] = None
-        self._model_info: Optional[dc.ModelDescriptor] = None
-        self._load_model_config: Optional[dc.KVConfig] = None
-        self._prediction_config: Optional[dc.KVConfig] = None
-
+    @override
     async def collect(self, fragments: List[str]) -> dc.PredictionResult:
         if self._stats is None:
             raise ValueError("Stats should not be None")
@@ -125,37 +131,7 @@ class AsyncOngoingPrediction(
             prediction_config=self._prediction_config,
         )
 
-    @staticmethod
-    def create(
-        on_cancel: Callable[[], None],
-    ) -> tuple[
-        AsyncOngoingPrediction,
-        Callable[..., None],
-        Callable[..., None],
-        Callable[[str], None],
-    ]:
-        ongoing_prediction = AsyncOngoingPrediction(on_cancel)
-
-        def finished(
-            stats: dc.LLMPredictionStats,
-            model_info: dc.ModelDescriptor,
-            load_model_config: dc.KVConfig,
-            prediction_config: dc.KVConfig,
-        ) -> None:
-            ongoing_prediction._stats = stats
-            ongoing_prediction._model_info = model_info
-            ongoing_prediction._load_model_config = load_model_config
-            ongoing_prediction._prediction_config = prediction_config
-            ongoing_prediction.finished()
-
-        def failed(error: Any = None) -> None:
-            ongoing_prediction.finished(error)
-
-        def push(fragment: str) -> None:
-            ongoing_prediction.push(fragment)
-
-        return ongoing_prediction, finished, failed, push
-
+    @override
     def result(self) -> asyncio.Future[dc.PredictionResult]:
         """Get the final prediction results.
 
@@ -166,7 +142,7 @@ class AsyncOngoingPrediction(
         Example:
 
         ```python
-        prediction = model.complete(
+        prediction = await model.complete(
             "When will The Winds of Winter be released?"
         )
         async for fragment in prediction:
@@ -175,19 +151,13 @@ class AsyncOngoingPrediction(
         print(result.stats)
         ```
 
-        Technically, awaiting on this method
-        is the same as awaiting on the instance itself:
-
-        ```python
-        await prediction.result()
-
-        # Is the same as:
-
-        await prediction
+        Returns:
+            The final prediction results.
         ```
         """
         return self.promise_final
 
+    @override
     async def cancel(self) -> None:
         """Cancels the prediction.
 
