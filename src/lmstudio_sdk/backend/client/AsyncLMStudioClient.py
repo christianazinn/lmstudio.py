@@ -3,6 +3,8 @@ import http.client
 import json
 import urllib.error
 from typing import Optional
+from typing_extensions import override
+
 
 import lmstudio_sdk.utils as utils
 
@@ -13,7 +15,47 @@ logger = utils.get_logger(__name__)
 
 
 class AsyncLMStudioClient(LMStudioClient):
-    # TODO: docstring
+    """Asynchronous client for the LM Studio server.
+
+    A more faithful port of the TypeScript SDK: if you have code in
+    TypeScript, it will translate almost directly to this client.
+    If you are not familiar with asyncio or are adapting an application
+    that used the OpenAI Python SDK, you may want to use the synchronous
+    client instead.
+
+    Do not construct this directly unless you know what you are doing.
+    Instead, use the `LMStudioClient` factory function: it will return
+    an instance of this class if `await`ed.
+
+    Methods are dot accessed through the four namespaces:
+    llm, embedding, system, and diagnostics. For example:
+
+    ```python
+    llm_client = await LMStudioClient()
+
+    print(await llm_client.system.list_downloaded_models())
+
+    model = await llm_client.llm.get("qwen2")
+    result = await model.respond(
+        [{"role": "user", "content": "Tell me a long story."}],
+        {}
+    )
+
+    async for completion in result:
+        print(completion)
+    ```
+
+    Attributes:
+        client_identifier: Unique identifier for the client.
+        base_url: Base URL for the LM Studio server.
+        llm: Method namespace for interacting with LLM models.
+        embedding: Method namespace for interacting with embedding models.
+        system: Method namespace for LM Studio system functions.
+        diagnostics: Method namespace for server diagnostics.
+    """
+
+    # TODO wait, why is this async? It's not doing anything async
+    @override
     async def _is_localhost_with_given_port_lmstudio_server(
         self, port: int
     ) -> int:
@@ -37,6 +79,7 @@ class AsyncLMStudioClient(LMStudioClient):
         finally:
             conn.close()
 
+    @override
     async def _guess_base_url(self) -> str:
         try:
             port = await asyncio.wait_for(
@@ -72,6 +115,7 @@ class AsyncLMStudioClient(LMStudioClient):
     ):
         super().__init__(base_url, client_identifier, client_passkey)
 
+    @override
     async def connect(self):
         if self.base_url is None:
             logger.warning("base_url is None. Attempting to guess base_url.")
@@ -107,6 +151,7 @@ class AsyncLMStudioClient(LMStudioClient):
 
         return self
 
+    @override
     async def close(self):
         logger.info(
             "Closing connection to LM Studio server at %s...", self.base_url

@@ -27,7 +27,7 @@ def number_to_checkbox_numeric(
 
 # TODO: can you change indent on the fly?
 def pretty_print(obj):
-    """Pretty prints the object."""
+    """Pretty print the object."""
     try:
         return json.dumps(obj, indent=2, default=lambda x: str(x))
     except Exception:
@@ -49,12 +49,12 @@ def _assert(condition: bool, message: str, info: str, logger):
 
 
 class RPCError(Exception):
-    """Raised when an RPC call fails."""
+    """Error in an RPC call."""
     pass
 
 
 class ChannelError(Exception):
-    """Raised when an error occurs in the channel."""
+    """Error in a WebSocket channel."""
     pass
 
 

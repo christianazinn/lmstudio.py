@@ -12,12 +12,22 @@ logger = utils.get_logger(__name__)
 
 class LMStudioClient(ABC):
     client_identifier: str
+    """Unique identifier for the client."""
+
     base_url: Optional[str]
+    """Base URL for the LM Studio server."""
 
     llm: ns.LLMNamespace = None
+    """Method namespace for interacting with LLM models."""
+
     embedding: ns.EmbeddingNamespace = None
+    """Method namespace for interacting with embedding models."""
+
     system: ns.SystemNamespace = None
+    """Method namespace for LM Studio system functions."""
+
     diagnostics: ns.DiagnosticsNamespace = None
+    """Method namespace for server diagnostics."""
 
     def _validate_base_url_or_throw(self, base_url):
         error_msg = None
@@ -74,13 +84,28 @@ class LMStudioClient(ABC):
 
     @abstractmethod
     def connect(self):
+        """Connect to the LM Studio server on all ports.
+
+        Raises:
+            ValueError: If the connection cannot be established.
+        """
         pass
 
     @abstractmethod
     def close(self):
+        """Close the connection to the LM Studio server on all ports."""
         pass
 
     def _create_ports(self, is_async: bool):
+        """Create ports for the client.
+
+        Args:
+            is_async (bool): Whether to create async or sync ports.
+
+        Raises:
+            ValueError: If the base_url, client_identifier,
+                or client_passkey is None.
+        """
         error_msg = None
         if self.base_url is None:
             error_msg = "Failed to create ports: base_url is None"

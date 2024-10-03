@@ -12,18 +12,18 @@ class BaseAbortSignal(ABC):
 
     @property
     def aborted(self) -> bool:
-        """Returns True if the signal has been aborted."""
+        """Return True if the signal has been aborted."""
         return self._aborted
 
     def add_listener(self, listener: Callable[[], None]) -> None:
-        """Adds a listener to be called when the signal is aborted."""
+        """Add a listener to be called when the signal is aborted."""
         if self._aborted:
             listener()
         else:
             self._listeners.append(listener)
 
     def remove_listener(self, listener: Callable[[], None]) -> None:
-        """Removes a previously added listener."""
+        """Remove a previously added listener."""
         if not self._aborted:
             self._listeners = [li for li in self._listeners if li != listener]
 
@@ -43,7 +43,7 @@ class AsyncAbortSignal(BaseAbortSignal):
         self._event = asyncio.Event()
 
     async def abort(self) -> None:
-        """Aborts the signal."""
+        """Abort the signal."""
         if not self._aborted:
             self._aborted = True
             for listener in self._listeners:
@@ -52,7 +52,7 @@ class AsyncAbortSignal(BaseAbortSignal):
             self._event.set()
 
     async def wait_for_abort(self) -> None:
-        """Waits for the signal to be aborted."""
+        """Wait for the signal to be aborted."""
         await self._event.wait()
 
 
@@ -63,7 +63,7 @@ class SyncAbortSignal(BaseAbortSignal):
         self._event = threading.Event()
 
     def abort(self) -> None:
-        """Aborts the signal."""
+        """Abort the signal."""
         if not self._aborted:
             self._aborted = True
             for listener in self._listeners:
@@ -72,5 +72,5 @@ class SyncAbortSignal(BaseAbortSignal):
             self._event.set()
 
     def wait_for_abort(self) -> None:
-        """Waits for the signal to be aborted."""
+        """Wait for the signal to be aborted."""
         self._event.wait()

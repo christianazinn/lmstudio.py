@@ -2,6 +2,7 @@ import json
 import threading
 import websocket
 from typing import Any, Callable, Optional
+from typing_extensions import override
 
 import lmstudio_sdk.utils as utils
 
@@ -12,6 +13,11 @@ logger = utils.get_logger(__name__)
 
 
 class SyncClientPort(BaseClientPort):
+    """Synchronous client port for LM Studio communication.
+
+    See `BaseClientPort` for more information.
+    """
+
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self._lock = threading.Lock()
@@ -24,35 +30,7 @@ class SyncClientPort(BaseClientPort):
             self.endpoint,
             utils.pretty_print(data),
         )
-
-        data_type = data.get("type", None)
-        if data_type is None:
-            return
-
-        # channel endpoints
-        if data_type == "channelSend":
-            channel_id = data.get("channelId")
-            if channel_id in self.channel_handlers:
-                message_content = data.get("message", data)
-                if message_content.get("type", None) == "log":
-                    message_content = message_content.get("log")
-                self.channel_handlers[channel_id](message_content)
-        elif data_type == "channelClose":
-            channel_id = data.get("channelId")
-            if channel_id in self.channel_handlers:
-                del self.channel_handlers[channel_id]
-        elif data_type == "channelError":
-            channel_id = data.get("channelId")
-            if channel_id in self.channel_handlers:
-                self.channel_handlers[channel_id](data)
-                del self.channel_handlers[channel_id]
-
-        # RPC endpoints
-        elif data_type == "rpcResult" or data_type == "rpcError":
-            call_id = data.get("callId", -1)
-            if call_id in self.rpc_handlers:
-                self.rpc_handlers[call_id](data)
-                del self.rpc_handlers[call_id]
+        self._handle_data(data)
 
     def on_error(self, ws, error):
         logger.error(
@@ -81,7 +59,8 @@ class SyncClientPort(BaseClientPort):
         logger.websocket("Sync port authenticated: %s.", self.endpoint)
         self._connection_event.set()
 
-    def connect(self) -> bool:
+    @override
+    def connect(self):
         with self._lock:
             self._websocket = websocket.WebSocketApp(
                 self.uri,
@@ -94,15 +73,27 @@ class SyncClientPort(BaseClientPort):
         wst.daemon = True
         wst.start()
 
-        if not self._connection_event.wait(timeout=5):
+        if self._connection_event.wait(timeout=5):
+            logger.websocket("Connected to WebSocket at %s.", self.uri)
+        else:
             logger.error(
                 "Failed to connect to WebSocket server at %s.", self.uri
             )
-            return False
 
-        logger.websocket("Connected to WebSocket at %s.", self.uri)
-        return True
+    @override
+    def close(self):
+        with self._lock:
+            if self._websocket:
+                logger.websocket(
+                    "Closing WebSocket connection on sync port %s.",
+                    self.endpoint,
+                )
+                self._websocket.close()
+                logger.websocket(
+                    "WebSocket connection closed to %s.", self.endpoint
+                )
 
+    @override
     def _send_payload(
         self,
         payload: dict,
@@ -127,27 +118,15 @@ class SyncClientPort(BaseClientPort):
                 return postprocess(extra)
             return extra
 
-    def close(self) -> None:
-        with self._lock:
-            if self._websocket:
-                logger.websocket(
-                    "Closing WebSocket connection on sync port %s.",
-                    self.endpoint,
-                )
-                self._websocket.close()
-                logger.websocket(
-                    "WebSocket connection closed to %s.", self.endpoint
-                )
-
-    def is_connected(self) -> bool:
-        return self._connection_event.is_set()
-
+    @override
     def _rpc_complete_event(self):
         return threading.Event()
 
+    @override
     def _promise_event(self):
         return utils.PseudoFuture()
 
+    @override
     def _call_rpc(
         self,
         payload: dict,

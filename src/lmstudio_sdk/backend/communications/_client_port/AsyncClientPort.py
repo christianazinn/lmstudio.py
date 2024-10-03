@@ -2,6 +2,7 @@ import asyncio
 import json
 import websockets
 from typing import Any, Callable, Optional
+from typing_extensions import override
 
 import lmstudio_sdk.utils as utils
 
@@ -12,11 +13,17 @@ logger = utils.get_logger(__name__)
 
 
 class AsyncClientPort(BaseClientPort):
+    """Asynchronous client port for LM Studio communication.
+
+    See `BaseClientPort` for more information.
+    """
+
     def __init__(self, uri: str, endpoint: str, identifier: str, passkey: str):
         super().__init__(uri, endpoint, identifier, passkey)
         self.running = False
         self.receive_task = None
 
+    @override
     async def connect(self):
         logger.websocket("Connecting to WebSocket at %s...", self.uri)
         self._websocket = await websockets.connect(self.uri)
@@ -42,6 +49,7 @@ class AsyncClientPort(BaseClientPort):
         )
         self.receive_task = asyncio.create_task(self.__receive_messages())
 
+    @override
     async def close(self):
         self.running = False
         if self._websocket:
@@ -70,6 +78,13 @@ class AsyncClientPort(BaseClientPort):
                 )
 
     async def __receive_messages(self):
+        """Receive messages from the WebSocket connection.
+
+        This method is a coroutine that runs indefinitely, waiting for messages
+        from the WebSocket connection. When a message is received, it is logged
+        and passed to the `_handle_data` method for processing, after which
+        the method waits for the next message.
+        """
         try:
             while self.running:
                 assert self._websocket is not None
@@ -77,41 +92,14 @@ class AsyncClientPort(BaseClientPort):
                     "Waiting for message on async port %s.", self.endpoint
                 )
                 message = await self._websocket.recv()
+
                 data = json.loads(message)
                 logger.recv(
                     "Message received on async port %s:\n%s",
                     self.endpoint,
                     utils.pretty_print(data),
                 )
-
-                data_type = data.get("type", None)
-                if data_type is None:
-                    continue
-
-                # channel endpoints
-                if data_type == "channelSend":
-                    channel_id = data.get("channelId")
-                    if channel_id in self.channel_handlers:
-                        message_content = data.get("message", data)
-                        if message_content.get("type", None) == "log":
-                            message_content = message_content.get("log")
-                        self.channel_handlers[channel_id](message_content)
-                elif data_type == "channelClose":
-                    channel_id = data.get("channelId")
-                    if channel_id in self.channel_handlers:
-                        del self.channel_handlers[channel_id]
-                elif data_type == "channelError":
-                    channel_id = data.get("channelId")
-                    if channel_id in self.channel_handlers:
-                        self.channel_handlers[channel_id](data)
-                        del self.channel_handlers[channel_id]
-
-                # RPC endpoints
-                elif data_type == "rpcResult" or data_type == "rpcError":
-                    call_id = data.get("callId", -1)
-                    if call_id in self.rpc_handlers:
-                        self.rpc_handlers[call_id](data)
-                        del self.rpc_handlers[call_id]
+                self._handle_data(data)
         except AssertionError:
             logger.error(
                 "WebSocket connection not established in \
@@ -127,6 +115,7 @@ class AsyncClientPort(BaseClientPort):
         finally:
             self.running = False
 
+    @override
     async def _send_payload(
         self,
         payload: dict,
@@ -150,12 +139,15 @@ class AsyncClientPort(BaseClientPort):
             return postprocess(extra)
         return extra
 
+    @override
     def _rpc_complete_event(self):
         return asyncio.Event()
 
+    @override
     def _promise_event(self):
         return asyncio.Future()
 
+    @override
     async def _call_rpc(
         self,
         payload: dict,
@@ -169,6 +161,8 @@ class AsyncClientPort(BaseClientPort):
             "Waiting for RPC call to complete to %s...",
             payload.get("endpoint", "unknown"),
         )
+        # TODO that's not very asynchronous of you:
+        # this blocks anyway! should return a Future or similar
         await complete.wait()
 
         if "error" in result:
